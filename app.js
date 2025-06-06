@@ -2,10 +2,42 @@ const express = require('express');
 const session = require('express-session');
 const fetch = require('node-fetch');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Файл для хранения токенов
+const TOKENS_FILE = path.join(__dirname, 'stored_tokens.json');
+
+// Функция для загрузки сохраненных токенов
+function loadStoredTokens() {
+  try {
+    if (fs.existsSync(TOKENS_FILE)) {
+      const data = fs.readFileSync(TOKENS_FILE, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error('Error loading stored tokens:', error);
+  }
+  return null;
+}
+
+// Функция для сохранения токенов
+function saveTokens(tokens, userInfo = null) {
+  try {
+    const data = {
+      tokens,
+      userInfo,
+      savedAt: new Date().toISOString()
+    };
+    fs.writeFileSync(TOKENS_FILE, JSON.stringify(data, null, 2));
+    console.log('Tokens saved successfully');
+  } catch (error) {
+    console.error('Error saving tokens:', error);
+  }
+}
 
 // Настройка сессий
 app.use(session({
@@ -22,6 +54,19 @@ app.use(session({
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Middleware для восстановления токенов из файла
+app.use((req, res, next) => {
+  if (!req.session.tokens) {
+    const storedData = loadStoredTokens();
+    if (storedData) {
+      req.session.tokens = storedData.tokens;
+      req.session.userInfo = storedData.userInfo;
+      console.log('Restored tokens from file');
+    }
+  }
+  next();
+});
 
 // Проверка авторизации
 function isAuthenticated(req, res, next) {
@@ -271,6 +316,9 @@ app.get('/callback', async (req, res) => {
       employerId: userData.employer ? userData.employer.id : null,
       isEmployer: !!userData.employer
     };
+    
+    // Сохраняем токены и информацию о пользователе в файл
+    saveTokens(tokens, req.session.userInfo);
     
     res.redirect('/');
   } catch (error) {
@@ -1194,7 +1242,7 @@ app.post('/save-to-airtable', isAuthenticated, async (req, res) => {
             <div class="details-title">Детали записи:</div>
             <div class="details-item">ID в Airtable: ${result.records[0].id}</div>
             <div class="details-item">Кандидат: ${airtableData.records[0].fields.Name}</div>
-            <div class="details-item">Должность: ${airtableData.records[0].fields["Job Title"]}</div>
+            <div class="details-item">Должность: ${airtableData.records[0].fields["Job_Title"]}</div>
           </div>
           
           <a href="/search" class="button">🔍 Продолжить поиск</a>
@@ -1217,6 +1265,12 @@ app.post('/save-to-airtable', isAuthenticated, async (req, res) => {
 // Выход
 app.get('/logout', (req, res) => {
   req.session.destroy();
+  // Удаляем файл с токенами
+  try {
+    fs.unlinkSync(TOKENS_FILE);
+  } catch (error) {
+    console.error('Error deleting tokens file:', error);
+  }
   res.redirect('/');
 });
 
