@@ -70,7 +70,15 @@ app.use((req, res, next) => {
 
 // Проверка авторизации
 function isAuthenticated(req, res, next) {
-  if (req.session.tokens && req.session.tokens.access_token) {
+  // Пытаемся загрузить сохраненные токены, если их нет в сессии
+  if (!req.session.tokens) {
+    const storedTokens = loadStoredTokens();
+    if (storedTokens) {
+      req.session.tokens = storedTokens.tokens;
+      req.session.userInfo = storedTokens.userInfo;
+    }
+  }
+    if (req.session.tokens && req.session.tokens.access_token) {
     next();
   } else {
     res.redirect('/');
@@ -79,7 +87,15 @@ function isAuthenticated(req, res, next) {
 
 // Главная страница
 app.get('/', (req, res) => {
-  const isLoggedIn = req.session.tokens && req.session.tokens.access_token;
+  // Пытаемся загрузить сохраненные токены, если их нет в сессии
+  if (!req.session.tokens) {
+    const storedTokens = loadStoredTokens();
+    if (storedTokens) {
+      req.session.tokens = storedTokens.tokens;
+      req.session.userInfo = storedTokens.userInfo;
+    }
+  }
+    const isLoggedIn = req.session.tokens && req.session.tokens.access_token;
   
   res.send(`
     <!DOCTYPE html>
@@ -329,7 +345,15 @@ app.get('/callback', async (req, res) => {
 
 // Страница поиска
 app.get('/search', isAuthenticated, (req, res) => {
-  res.send(`
+  // Пытаемся загрузить сохраненные токены, если их нет в сессии
+  if (!req.session.tokens) {
+    const storedTokens = loadStoredTokens();
+    if (storedTokens) {
+      req.session.tokens = storedTokens.tokens;
+      req.session.userInfo = storedTokens.userInfo;
+    }
+  }
+    res.send(`
     <!DOCTYPE html>
     <html lang="ru">
     <head>
