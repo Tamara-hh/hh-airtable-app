@@ -537,6 +537,27 @@ app.get('/search-results', isAuthenticated, async (req, res) => {
     // Добавляем опциональные параметры
     if (req.query.experience) searchParams.append('experience', req.query.experience);
     if (req.query.salary_from) searchParams.append('salary_from', req.query.salary_from);
+
+    // Обработка навыков
+    if (req.query.skills_must_have || req.query.skills_nice_to_have) {
+      let skillsText = req.query.text || '';
+      
+      if (req.query.skills_must_have) {
+        const mustHaveSkills = req.query.skills_must_have.split(',').map(s => s.trim()).filter(s => s);
+        if (mustHaveSkills.length > 0) {
+          skillsText += ' ' + mustHaveSkills.join(' ');
+        }
+      }
+      
+      if (req.query.skills_nice_to_have) {
+        const niceToHaveSkills = req.query.skills_nice_to_have.split(',').map(s => s.trim()).filter(s => s);
+        if (niceToHaveSkills.length > 0) {
+          skillsText += ' ' + niceToHaveSkills.join(' OR ');
+        }
+      }
+      
+      searchParams.set('text', skillsText.trim());
+    }
     
     const response = await fetch(`https://api.hh.ru/resumes?${searchParams}`, {
       headers: {
