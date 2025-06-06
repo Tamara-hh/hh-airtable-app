@@ -490,6 +490,28 @@ app.get('/search', isAuthenticated, (req, res) => {
           </div>
           
           <button type="submit">🔍 Начать поиск</button>
+
+          <div class="form-group">
+            <label for="skills_must_have">Обязательные навыки (через запятую)</label>
+            <input 
+              type="text" 
+              id="skills_must_have" 
+              name="skills_must_have" 
+              placeholder="Например: AutoCAD, SolidWorks, релейная защита"
+            >
+            <p class="help-text">Кандидат должен иметь ВСЕ указанные навыки</p>
+          </div>
+
+          <div class="form-group">
+            <label for="skills_nice_to_have">Желательные навыки (через запятую)</label>
+            <input 
+              type="text" 
+              id="skills_nice_to_have" 
+              name="skills_nice_to_have" 
+              placeholder="Например: SAP, 1C, Oracle, MS Project"
+            >
+            <p class="help-text">Достаточно хотя бы одного из указанных навыков</p>
+          </div>
         </form>
         
         <div class="back-link">
@@ -508,7 +530,8 @@ app.get('/search-results', isAuthenticated, async (req, res) => {
       text: req.query.text || '',
       area: req.query.area || '1',
       per_page: req.query.per_page || '20',
-      page: req.query.page || '0'
+      page: req.query.page || '0',
+      skills: req.query.skills_must_have || ''
     });
     
     // Добавляем опциональные параметры
