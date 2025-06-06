@@ -306,11 +306,21 @@ app.get('/callback', async (req, res) => {
         code: code
       })
     });
+    const responseText = await tokenResponse.text();
+    console.log('HH Response Status:', tokenResponse.status);
+    console.log('HH Response Headers:', tokenResponse.headers.raw());
+    console.log('HH Response Body (first 500 chars):', responseText.substring(0, 500));
     
-    const tokens = await tokenResponse.json();
+    let tokens;
+    try {
+      tokens = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse HH response as JSON');
+      throw new Error('HeadHunter вернул неверный ответ. Возможно, сервис временно недоступен.');
+    }
+    
     console.log('Token response status:', tokenResponse.status);
     console.log('Token response:', tokens);
-    
     if (tokens.error) {
       console.error('HH OAuth error:', tokens);
         throw new Error(tokens.error_description || tokens.error);
