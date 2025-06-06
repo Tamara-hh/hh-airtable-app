@@ -295,7 +295,8 @@ app.get('/callback', async (req, res) => {
     const tokenResponse = await fetch('https://hh.ru/oauth/token', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'HH-Airtable-App/1.0'
       },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
@@ -307,9 +308,12 @@ app.get('/callback', async (req, res) => {
     });
     
     const tokens = await tokenResponse.json();
+    console.log('Token response status:', tokenResponse.status);
+    console.log('Token response:', tokens);
     
     if (tokens.error) {
-      throw new Error(tokens.error_description || tokens.error);
+      console.error('HH OAuth error:', tokens);
+        throw new Error(tokens.error_description || tokens.error);
     }
     
     // Сохраняем токены в сессию
