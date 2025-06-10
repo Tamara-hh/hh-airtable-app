@@ -1814,6 +1814,17 @@ app.post('/api/save-to-airtable', isAuthenticated, async (req, res) => {
     }
     
     let resumeData = await resumeResponse.json();
+        // Проверяем на дубликат
+    const isDuplicate = await checkDuplicateInAirtable(resumeData);
+    
+    if (isDuplicate) {
+      // Возвращаем специальный ответ для дубликата
+      return res.json({ 
+        success: false, 
+        isDuplicate: true,
+        error: 'Duplicate resume' 
+      });
+    }
     let paidContactOpened = false;
     let hadFreeContacts = false;
     
