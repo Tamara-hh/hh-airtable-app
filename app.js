@@ -929,7 +929,6 @@ window.saveSelected = async function() {
 }
   // Инициализация при загрузке страницы
 window.onload = function() {
-window.onload = function() {
   console.log('Page loaded, initializing...');
   window.updateSelectionInfo();
 };
