@@ -847,7 +847,6 @@ app.get('/search-results', isAuthenticated, async (req, res) => {
 window.toggleResumeSelection = function(checkbox) {
   console.log('Checkbox clicked!');
   const card = checkbox.closest('.resume-card');
-  const card = checkbox.closest('.resume-card');
   if (checkbox.checked) {
     card.classList.add('selected');
   } else {
