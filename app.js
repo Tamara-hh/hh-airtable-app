@@ -130,13 +130,6 @@ function transformResumeData(resume) {
     "Hiring Status": "Candidate"
   };
   
-  // Языки
-  if (resume.language && resume.language.length > 0) {
-    fields.Languages = resume.language.map(lang => 
-      `${lang.name} (${lang.level.name})`
-    ).join(', ');
-  }
-  
   return {
     records: [
       {
