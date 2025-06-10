@@ -112,7 +112,6 @@ function transformResumeData(resume) {
   
   const fields = {
     Name: `${resume.last_name || ''} ${resume.first_name || ''} ${resume.middle_name || ''}`.trim() || 'Без имени',
-    Resume_ID: resume.id,
     Email: email,
     "Phone number": phone,
     resume_url: resume.alternate_url || '',
@@ -1555,7 +1554,7 @@ app.post('/save-to-airtable', isAuthenticated, async (req, res) => {
     }
     
     const result = await airtableResponse.json();
-    
+
     // Показываем результат
     res.send(`
       <!DOCTYPE html>
