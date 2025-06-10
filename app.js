@@ -672,6 +672,18 @@ app.get('/search', isAuthenticated, (req, res) => {
                 <option value="100">100 резюме</option>
               </select>
             </div>
+            <div class="form-group">
+              <label for="update_period">Дата обновления резюме</label>
+              <select id="update_period" name="update_period">
+                <option value="">Любая дата</option>
+                <option value="1">За последние 24 часа</option>
+                <option value="3">За последние 3 дня</option>
+                <option value="7">За последнюю неделю</option>
+                <option value="14">За последние 2 недели</option>
+                <option value="30">За последний месяц</option>
+              </select>
+              <p class="help-text">Показывать только резюме, обновленные в выбранный период</p>
+            </div>
           </div>
           
           <div class="form-group">
@@ -723,6 +735,15 @@ app.get('/search-results', isAuthenticated, async (req, res) => {
     if (req.query.experience) searchParams.append('experience', req.query.experience);
     if (req.query.salary_from) searchParams.append('salary_from', req.query.salary_from);
 
+    // Добавляем фильтр по дате обновления
+    if (req.query.update_period) {
+    const days = parseInt(req.query.update_period);
+    const dateFrom = new Date();
+    dateFrom.setDate(dateFrom.getDate() - days);
+    const formattedDate = dateFrom.toISOString().split('T')[0]; // Формат YYYY-MM-DD
+    searchParams.append('date_from', formattedDate);
+  }
+   
     // Обработка навыков
     if (req.query.skills_must_have || req.query.skills_nice_to_have) {
       let skillsText = req.query.text || '';
