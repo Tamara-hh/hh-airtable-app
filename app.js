@@ -1583,7 +1583,79 @@ app.post('/save-to-airtable', isAuthenticated, async (req, res) => {
     }
     
     const resume = await resumeResponse.json();
+        // Проверяем на дубликат
+    const isDuplicate = await checkDuplicateInAirtable(resume);
     
+    if (isDuplicate) {
+      // Если найден дубликат, показываем сообщение
+      return res.send(`
+        <!DOCTYPE html>
+        <html lang="ru">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Дубликат - HH → Airtable</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              min-height: 100vh;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            .container {
+              background: white;
+              padding: 40px;
+              border-radius: 20px;
+              box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+              max-width: 500px;
+              width: 90%;
+              text-align: center;
+            }
+            .warning-icon {
+              font-size: 64px;
+              margin-bottom: 20px;
+            }
+            h1 {
+              color: #f59e0b;
+              margin-bottom: 20px;
+            }
+            p {
+              color: #4a5568;
+              margin-bottom: 30px;
+              line-height: 1.6;
+            }
+            .button {
+              display: inline-block;
+              padding: 12px 30px;
+              margin: 10px;
+              background: #667eea;
+              color: white;
+              text-decoration: none;
+              border-radius: 25px;
+              font-weight: 500;
+              transition: all 0.3s ease;
+            }
+            .button:hover {
+              background: #5a67d8;
+              transform: translateY(-2px);
+              box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="warning-icon">⚠️</div>
+            <h1>Резюме уже есть в базе</h1>
+            <p>Это резюме уже сохранено в вашей базе Airtable. Дубликаты не сохраняются для поддержания чистоты данных.</p>
+            <a href="javascript:history.back()" class="button">← Вернуться назад</a>
+            <a href="/search" class="button">🔍 Продолжить поиск</a>
+          </div>
+        </body>
+        </html>
+      `);
+    }
     // Преобразуем данные для Airtable
     const airtableData = transformResumeData(resume);
     
