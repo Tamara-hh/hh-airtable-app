@@ -845,7 +845,29 @@ app.get('/search-results', isAuthenticated, async (req, res) => {
             width: 0%;
             transition: width 0.3s;
           }
-        </style>
+          .open-contacts-option {
+            display: inline-block;
+            margin: 0 10px;
+            padding: 10px 15px;
+            background: #f0f0f0;
+            border-radius: 5px;
+          }
+          .open-contacts-option label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-size: 14px;
+          }
+          .open-contacts-option input[type="checkbox"] {
+            margin-right: 8px;
+            width: 16px;
+            height: 16px;
+          }
+          .open-contacts-option span {
+            color: #333;
+            font-weight: 500;
+          }
+          </style>
         <script>
 window.toggleResumeSelection = function(checkbox) {
   console.log('Checkbox clicked!');
@@ -886,45 +908,94 @@ window.deselectAll = function() {
 
 window.saveSelected = async function() {
   const checked = document.querySelectorAll('.resume-checkbox:checked');
-  if (checked.length === 0) return;
+  const openPaidContacts = document.getElementById('open-paid-contacts').checked;
+  
+  if (checked.length === 0) {
+    alert('Выберите хотя бы одно резюме');
+    return;
+  }
+  
+  if (!confirm('Сохранить ' + checked.length + ' резюме в Airtable?' + 
+    (openPaidContacts ? '\n\nВНИМАНИЕ: Будут открыты платные контакты!' : ''))) {
+    return;
+  }
   
   const progressModal = document.getElementById('progress-modal');
-  const progressFill = document.getElementById('progress-fill');
   const progressText = document.getElementById('progress-text');
-  const saveButton = document.getElementById('save-selected');
+  const progressFill = document.getElementById('progress-fill');
   
   progressModal.style.display = 'flex';
+  progressText.textContent = 'Подготовка к сохранению...';
+  progressFill.style.width = '0%';
+  
+  const saveButton = document.getElementById('save-selected');
   saveButton.disabled = true;
   
   let saved = 0;
   let errors = 0;
+  let paidContactsOpened = 0;
+  let savedWithFreeContacts = 0;
+  let savedWithoutContacts = 0;
   
   for (let j = 0; j < checked.length; j++) {
     const resumeId = checked[j].value;
-    progressText.textContent = 'Saving ' + (j + 1) + ' of ' + checked.length + '...';
+    progressText.textContent = 'Сохранение ' + (j + 1) + ' из ' + checked.length + '...';
     progressFill.style.width = ((j + 1) / checked.length * 100) + '%';
     
     try {
       const response = await fetch('/api/save-to-airtable', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeId })
+        body: JSON.stringify({ 
+          resumeId: resumeId,
+          openPaidContacts: openPaidContacts 
+        })
       });
+      
+      const result = await response.json();
       
       if (response.ok) {
         saved++;
+        if (result.paidContactOpened) {
+          paidContactsOpened++;
+        } else if (result.hadFreeContacts) {
+          savedWithFreeContacts++;
+        } else {
+          savedWithoutContacts++;
+        }
       } else {
         errors++;
+        console.error('Ошибка сохранения:', result.error);
       }
     } catch (e) {
       errors++;
+      console.error('Ошибка запроса:', e);
     }
     
+    // Задержка между запросами
     await new Promise(resolve => setTimeout(resolve, 500));
   }
   
   progressModal.style.display = 'none';
-  alert('Saved: ' + saved + ', Errors: ' + errors);
+  
+  // Показываем детальный отчет
+  let reportMessage = 'ОТЧЕТ О СОХРАНЕНИИ:\n\n';
+  reportMessage += 'Всего обработано: ' + checked.length + '\n';
+  reportMessage += 'Успешно сохранено: ' + saved + '\n';
+  if (savedWithFreeContacts > 0) {
+    reportMessage += '✓ С бесплатными контактами: ' + savedWithFreeContacts + '\n';
+  }
+  if (paidContactsOpened > 0) {
+    reportMessage += '💰 С платными контактами: ' + paidContactsOpened + '\n';
+  }
+  if (savedWithoutContacts > 0) {
+    reportMessage += '⚠️ Без контактов: ' + savedWithoutContacts + '\n';
+  }
+  if (errors > 0) {
+    reportMessage += '❌ Ошибок: ' + errors + '\n';
+  }
+  
+  alert(reportMessage);
   
   if (saved > 0) {
     window.deselectAll();
@@ -953,12 +1024,18 @@ window.onload = function() {
               Выбрано <span id="selection-count">0</span> из <span id="total-count">${data.items.length}</span> резюме
             </div>
             <div class="selection-buttons">
-              <button type="button" class="button secondary" onclick="window.selectAll()">Выбрать все</button>
-              <button type="button" class="button secondary" onclick="window.deselectAll()">Снять выделение</button>
-              <button type="button" id="save-selected" class="button save-selected" onclick="window.saveSelected()" disabled>
-                💾 Сохранить выбранные в Airtable
-              </button>
-            </div>
+               <button type="button" class="button secondary" onclick="window.selectAll()">Выбрать все</button>
+               <button type="button" class="button secondary" onclick="window.deselectAll()">Снять выделение</button>
+               <div class="open-contacts-option">
+                 <label>
+                   <input type="checkbox" id="open-paid-contacts" />
+                   <span>Открывать платные контакты</span>
+                 </label>
+               </div>
+               <button type="button" id="save-selected" class="button save-selected" onclick="window.saveSelected()" disabled>
+                 💾 Сохранить выбранные в Airtable
+               </button>
+             </div>
           </div>
 
           <div id="progress-modal" class="progress-modal">
