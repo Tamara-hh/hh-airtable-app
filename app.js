@@ -921,7 +921,7 @@ window.saveSelected = async function() {
   }
   
   progressModal.style.display = 'none';
-  alert('Saved successfully!\n\nSuccessfully saved: ' + saved + '\nErrors: ' + errors);
+  //alert('Saved successfully!\n\nSuccessfully saved: ' + saved + '\nErrors: ' + errors);
   
   if (saved > 0) {
   window.deselectAll();
