@@ -928,7 +928,7 @@ window.saveSelected = async function() {
 }
   // Инициализация при загрузке страницы
 window.onload = function() {
-  updateSelectionInfo();
+  window.updateSelectionInfo();
 };
 </script>
           </head>
