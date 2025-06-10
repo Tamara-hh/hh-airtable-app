@@ -845,6 +845,7 @@ app.get('/search-results', isAuthenticated, async (req, res) => {
           </style>
       <script>
 function toggleResumeSelection(checkbox, resumeId) {
+alert('Чекбокс нажат!');
   const card = checkbox.closest('.resume-card');
   if (checkbox.checked) {
     card.classList.add('selected');
