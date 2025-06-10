@@ -102,10 +102,10 @@ function transformResumeData(resume) {
   if (resume.contact) {
     resume.contact.forEach(contact => {
       if (contact.type.id === 'cell' || contact.type.id === 'home') {
-        phone = (contact.value && contact.value.formatted) ? contact.value.formatted : contact.value || '';
+        phone = (contact.value && contact.value.formatted) ? contact.value.formatted : (contact.value || '');
       }
       if (contact.type.id === 'email') {
-        email = contact.value;
+        email = contact.value || '';
       }
     });
   }
@@ -138,6 +138,7 @@ function transformResumeData(resume) {
     ]
   };
 }
+
 // Функция проверки дубликатов в Airtable
 async function checkDuplicateInAirtable(resume) {
   try {
@@ -148,10 +149,10 @@ async function checkDuplicateInAirtable(resume) {
     if (resume.contact) {
       resume.contact.forEach(contact => {
         if (contact.type.id === 'email') {
-          email = contact.value;
+          email = contact.value || '';
         }
         if (contact.type.id === 'cell' || contact.type.id === 'home') {
-          phone = (contact.value && contact.value.formatted) ? contact.value.formatted : contact.value || '';
+          phone = (contact.value && contact.value.formatted) ? contact.value.formatted : (contact.value || '');
         }
       });
     }
@@ -190,16 +191,16 @@ async function checkDuplicateInAirtable(resume) {
       
       clearTimeout(timeoutId);
     
-    if (!response.ok) {
-      console.error('Error checking duplicate:', await response.text());
-      return false; // При ошибке разрешаем сохранение
-    }
-    
-    const data = await response.json();
-    
-    // Если найдена хотя бы одна запись - это дубликат
-    return data.records && data.records.length > 0;
-    
+      if (!response.ok) {
+        console.error('Error checking duplicate:', await response.text());
+        return false; // При ошибке разрешаем сохранение
+      }
+      
+      const data = await response.json();
+      
+      // Если найдена хотя бы одна запись - это дубликат
+      return data.records && data.records.length > 0;
+      
     } catch (fetchError) {
       clearTimeout(timeoutId);
       if (fetchError.name === 'AbortError') {
@@ -1468,7 +1469,7 @@ app.get('/resume/:id', isAuthenticated, async (req, res) => {
                 ${resume.contact.map(contact => `
                   <div class="info-item">
                     <div class="info-label">${contact.type.name}</div>
-                    <div class="info-value">${contact.value.formatted || contact.value}</div>
+                    <div class="info-value">${(contact.value && contact.value.formatted) ? contact.value.formatted : (contact.value || '')}</div>
                   </div>
                 `).join('')}
               </div>
@@ -1586,7 +1587,6 @@ app.post('/view-contacts', isAuthenticated, async (req, res) => {
     `);
   }
 });
-
 // Сохранение в Airtable
 app.post('/save-to-airtable', isAuthenticated, async (req, res) => {
   try {
@@ -1605,7 +1605,8 @@ app.post('/save-to-airtable', isAuthenticated, async (req, res) => {
     }
     
     const resume = await resumeResponse.json();
-        // Проверяем на дубликат
+    
+    // Проверяем на дубликат
     const isDuplicate = await checkDuplicateInAirtable(resume);
     
     if (isDuplicate) {
@@ -1678,6 +1679,7 @@ app.post('/save-to-airtable', isAuthenticated, async (req, res) => {
         </html>
       `);
     }
+    
     // Преобразуем данные для Airtable
     const airtableData = transformResumeData(resume);
     
@@ -1791,7 +1793,7 @@ app.post('/save-to-airtable', isAuthenticated, async (req, res) => {
             <div class="details-title">Детали записи:</div>
             <div class="details-item">ID в Airtable: ${result.records[0].id}</div>
             <div class="details-item">Кандидат: ${airtableData.records[0].fields.Name}</div>
-            <div class="details-item">Должность: ${airtableData.records[0].fields["Job_Title"]}</div>
+            <div class="details-item">Должность: ${airtableData.records[0].fields.Job_Title || 'Не указана'}</div>
           </div>
           
           <a href="/search" class="button">🔍 Продолжить поиск</a>
@@ -1836,7 +1838,8 @@ app.post('/api/save-to-airtable', isAuthenticated, async (req, res) => {
     }
     
     let resumeData = await resumeResponse.json();
-        // Проверяем на дубликат
+    
+    // Проверяем на дубликат
     const isDuplicate = await checkDuplicateInAirtable(resumeData);
     
     if (isDuplicate) {
@@ -1847,6 +1850,7 @@ app.post('/api/save-to-airtable', isAuthenticated, async (req, res) => {
         error: 'Duplicate resume' 
       });
     }
+    
     let paidContactOpened = false;
     let hadFreeContacts = false;
     
