@@ -39,6 +39,14 @@ function saveTokens(tokens, userInfo = null) {
   }
 }
 
+// Функция для получения валидного токена
+async function getValidToken(req) {
+  if (!req.session.tokens || !req.session.tokens.access_token) {
+    throw new Error('No access token available');
+  }
+  return req.session.tokens.access_token;
+}
+
 // Настройка сессий
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key-here-change-in-production',
@@ -84,39 +92,44 @@ function isAuthenticated(req, res, next) {
     res.redirect('/');
   }
 }
+
 // Функция преобразования данных резюме для Airtable
 function transformResumeData(resume) {
-  const fields = {
-    Name: `${resume.first_name || ''} ${resume.last_name || ''}`.trim() || 'Без имени',
-    Resume_ID: resume.id,
-    HH_URL: resume.alternate_url || '',
-    Job_Title: resume.title || '',
-    Age: resume.age || null,
-    City: resume.area ? resume.area.name : '',
-    Metro: resume.metro ? resume.metro.map(m => m.station_name).join(', ') : '',
-    Total_Experience_Months: resume.total_experience ? resume.total_experience.months : 0
-  };
+  // Извлекаем контактную информацию
+  let phone = '';
+  let email = '';
   
-  // Зарплата
-  if (resume.salary) {
-    fields.Salary_Amount = resume.salary.amount || 0;
-    fields.Salary_Currency = resume.salary.currency || 'RUR';
-  }
-  
-  // Контакты
   if (resume.contact) {
-    if (resume.contact.email) {
-      fields.Email = resume.contact.email;
-    }
-    if (resume.contact.phone && resume.contact.phone.length > 0) {
-      fields.Phone = resume.contact.phone[0].formatted || resume.contact.phone[0].number || '';
-    }
+    resume.contact.forEach(contact => {
+      if (contact.type.id === 'cell' || contact.type.id === 'home') {
+        phone = contact.value.formatted || contact.value;
+      }
+      if (contact.type.id === 'email') {
+        email = contact.value;
+      }
+    });
   }
   
-  // Навыки
-  if (resume.skill_set && resume.skill_set.length > 0) {
-    fields.Skills = resume.skill_set.join(', ');
-  }
+  const fields = {
+    Name: `${resume.last_name || ''} ${resume.first_name || ''} ${resume.middle_name || ''}`.trim() || 'Без имени',
+    Resume_ID: resume.id,
+    Email: email,
+    "Phone number": phone,
+    resume_url: resume.alternate_url || '',
+    Job_Title: resume.title || '',
+    area: resume.area ? resume.area.name : '',
+    age: resume.age || null,
+    salary_amount: resume.salary ? resume.salary.amount : 0,
+    salary_currency: resume.salary ? resume.salary.currency : 'RUR',
+    experience_months: resume.total_experience ? resume.total_experience.months : 0,
+    last_employer: resume.experience && resume.experience.length > 0 ? resume.experience[0].company : '',
+    education: resume.education && resume.education.primary && resume.education.primary.length > 0 
+      ? `${resume.education.primary[0].name || ''} - ${resume.education.primary[0].organization || ''}` 
+      : '',
+    skills: resume.skill_set && resume.skill_set.length > 0 ? resume.skill_set.join(', ') : '',
+    updated_at: new Date().toISOString().split('T')[0],
+    "Hiring Status": "Candidate"
+  };
   
   // Языки
   if (resume.language && resume.language.length > 0) {
@@ -124,32 +137,6 @@ function transformResumeData(resume) {
       `${lang.name} (${lang.level.name})`
     ).join(', ');
   }
-  
-  // Образование
-  if (resume.education) {
-    if (resume.education.primary && resume.education.primary.length > 0) {
-      const primary = resume.education.primary[0];
-      fields.Education_Level = resume.education.level ? resume.education.level.name : '';
-      fields.University = primary.name || '';
-      fields.Faculty = primary.result || '';
-      fields.Graduation_Year = primary.year || null;
-    }
-  }
-  
-  // Опыт работы
-  if (resume.experience && resume.experience.length > 0) {
-    const lastExp = resume.experience[0];
-    fields.Last_Company = lastExp.company || '';
-    fields.Last_Position = lastExp.position || '';
-    
-    const allExperience = resume.experience.map(exp => 
-      `${exp.position} в ${exp.company} (${exp.start} - ${exp.end || 'настоящее время'})`
-    ).join('\n');
-    fields.Experience_Details = allExperience;
-  }
-  
-  // Дата обновления резюме
-  fields.Updated_At = resume.updated_at || new Date().toISOString();
   
   return {
     records: [
@@ -869,6 +856,7 @@ app.get('/search-results', isAuthenticated, async (req, res) => {
           .selection-buttons {
             display: flex;
             gap: 10px;
+            align-items: center;
           }
           .button.save-selected {
             background: #48bb78;
@@ -942,7 +930,7 @@ app.get('/search-results', isAuthenticated, async (req, res) => {
             color: #333;
             font-weight: 500;
           }
-          </style>
+        </style>
         <script>
 window.toggleResumeSelection = function(checkbox) {
   console.log('Checkbox clicked!');
@@ -991,7 +979,7 @@ window.saveSelected = async function() {
   }
   
   if (!confirm('Сохранить ' + checked.length + ' резюме в Airtable?' + 
-    (openPaidContacts ? '\n\nВНИМАНИЕ: Будут открыты платные контакты!' : ''))) {
+    (openPaidContacts ? '\\n\\nВНИМАНИЕ: Будут открыты платные контакты!' : ''))) {
     return;
   }
   
@@ -1054,20 +1042,20 @@ window.saveSelected = async function() {
   progressModal.style.display = 'none';
   
   // Показываем детальный отчет
-  let reportMessage = 'ОТЧЕТ О СОХРАНЕНИИ:\n\n';
-  reportMessage += 'Всего обработано: ' + checked.length + '\n';
-  reportMessage += 'Успешно сохранено: ' + saved + '\n';
+  let reportMessage = 'ОТЧЕТ О СОХРАНЕНИИ:\\n\\n';
+  reportMessage += 'Всего обработано: ' + checked.length + '\\n';
+  reportMessage += 'Успешно сохранено: ' + saved + '\\n';
   if (savedWithFreeContacts > 0) {
-    reportMessage += '✓ С бесплатными контактами: ' + savedWithFreeContacts + '\n';
+    reportMessage += '✓ С бесплатными контактами: ' + savedWithFreeContacts + '\\n';
   }
   if (paidContactsOpened > 0) {
-    reportMessage += '💰 С платными контактами: ' + paidContactsOpened + '\n';
+    reportMessage += '💰 С платными контактами: ' + paidContactsOpened + '\\n';
   }
   if (savedWithoutContacts > 0) {
-    reportMessage += '⚠️ Без контактов: ' + savedWithoutContacts + '\n';
+    reportMessage += '⚠️ Без контактов: ' + savedWithoutContacts + '\\n';
   }
   if (errors > 0) {
-    reportMessage += '❌ Ошибок: ' + errors + '\n';
+    reportMessage += '❌ Ошибок: ' + errors + '\\n';
   }
   
   alert(reportMessage);
@@ -1099,18 +1087,18 @@ window.onload = function() {
               Выбрано <span id="selection-count">0</span> из <span id="total-count">${data.items.length}</span> резюме
             </div>
             <div class="selection-buttons">
-               <button type="button" class="button secondary" onclick="window.selectAll()">Выбрать все</button>
-               <button type="button" class="button secondary" onclick="window.deselectAll()">Снять выделение</button>
-               <div class="open-contacts-option">
-                 <label>
-                   <input type="checkbox" id="open-paid-contacts" />
-                   <span>Открывать платные контакты</span>
-                 </label>
-               </div>
-               <button type="button" id="save-selected" class="button save-selected" onclick="window.saveSelected()" disabled>
-                 💾 Сохранить выбранные в Airtable
-               </button>
-             </div>
+              <button type="button" class="button secondary" onclick="window.selectAll()">Выбрать все</button>
+              <button type="button" class="button secondary" onclick="window.deselectAll()">Снять выделение</button>
+              <div class="open-contacts-option">
+                <label>
+                  <input type="checkbox" id="open-paid-contacts" />
+                  <span>Открывать платные контакты</span>
+                </label>
+              </div>
+              <button type="button" id="save-selected" class="button save-selected" onclick="window.saveSelected()" disabled>
+                💾 Сохранить выбранные в Airtable
+              </button>
+            </div>
           </div>
 
           <div id="progress-modal" class="progress-modal">
@@ -1525,93 +1513,6 @@ app.post('/view-contacts', isAuthenticated, async (req, res) => {
   }
 });
 
-// Сохранение в Airtable (JSON версия для AJAX)
-app.post('/api/save-to-airtable', isAuthenticated, async (req, res) => {
-  try {
-    const { resumeId } = req.body;
-    
-    // Получаем полную информацию о резюме
-    const resumeResponse = await fetch(`https://api.hh.ru/resumes/${resumeId}`, {
-      headers: {
-        'Authorization': `Bearer ${req.session.tokens.access_token}`,
-        'User-Agent': 'HH-Airtable-App/1.0'
-      }
-    });
-    
-    if (!resumeResponse.ok) {
-      return res.status(400).json({ error: 'Не удалось получить резюме' });
-    }
-    
-    const resume = await resumeResponse.json();
-    
-    // Извлекаем контактную информацию
-    let phone = '';
-    let email = '';
-    
-    if (resume.contact) {
-      resume.contact.forEach(contact => {
-        if (contact.type.id === 'cell' || contact.type.id === 'home') {
-          phone = contact.value.formatted || contact.value;
-        }
-        if (contact.type.id === 'email') {
-          email = contact.value;
-        }
-      });
-    }
-    
-    // Подготавливаем данные для Airtable
-    const airtableData = {
-      records: [{
-        fields: {
-          "Name": `${resume.last_name || ''} ${resume.first_name || ''} ${resume.middle_name || ''}`.trim(),
-          "Job_Title": resume.title || '',
-          "Email": email || '',
-          "Phone number": phone || '',
-          "resume_url": resume.alternate_url || '',
-          "area": resume.area ? resume.area.name : '',
-          "salary_amount": resume.salary ? resume.salary.amount : 0,
-          "salary_currency": resume.salary ? resume.salary.currency : '',
-          "experience_months": resume.total_experience ? resume.total_experience.months : 0,
-          "age": resume.age || 0,
-          "last_employer": resume.experience && resume.experience.length > 0 ? resume.experience[0].company : '',
-          "education": resume.education && resume.education.primary && resume.education.primary.length > 0 
-            ? `${resume.education.primary[0].name || ''} - ${resume.education.primary[0].organization || ''}` 
-            : '',
-          "skills": resume.skill_set && resume.skill_set.length > 0 ? resume.skill_set.join(', ') : '',
-          "updated_at": new Date().toISOString().split('T')[0],
-          "Hiring Status": "Candidate"
-        }
-      }]
-    };
-    
-    // Отправляем в Airtable
-    const airtableResponse = await fetch(
-      `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/People`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(airtableData)
-      }
-    );
-    
-    if (!airtableResponse.ok) {
-      const error = await airtableResponse.text();
-      console.error('Airtable error:', error);
-      return res.status(500).json({ error: 'Не удалось сохранить в Airtable' });
-    }
-    
-    const result = await airtableResponse.json();
-    res.json({ success: true, recordId: result.records[0].id });
-    
-  } catch (error) {
-    console.error('Save error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Сохранение в Airtable
 app.post('/save-to-airtable', isAuthenticated, async (req, res) => {
   try {
@@ -1631,45 +1532,8 @@ app.post('/save-to-airtable', isAuthenticated, async (req, res) => {
     
     const resume = await resumeResponse.json();
     
-    // Извлекаем контактную информацию
-    let phone = '';
-    let email = '';
-    
-    if (resume.contact) {
-      resume.contact.forEach(contact => {
-        if (contact.type.id === 'cell' || contact.type.id === 'home') {
-          phone = contact.value.formatted || contact.value;
-        }
-        if (contact.type.id === 'email') {
-          email = contact.value;
-        }
-      });
-    }
-    
-    // Подготавливаем данные для Airtable с правильными названиями полей
-    const airtableData = {
-      records: [{
-        fields: {
-          "Name": `${resume.last_name || ''} ${resume.first_name || ''} ${resume.middle_name || ''}`.trim(),
-          "Job_Title": resume.title || '',
-          "Email": email || '',
-          "Phone number": phone || '',
-          "resume_url": resume.alternate_url || '',
-          "area": resume.area ? resume.area.name : '',
-          "salary_amount": resume.salary ? resume.salary.amount : 0,
-          "salary_currency": resume.salary ? resume.salary.currency : '',
-          "experience_months": resume.total_experience ? resume.total_experience.months : 0,
-          "age": resume.age || 0,
-          "last_employer": resume.experience && resume.experience.length > 0 ? resume.experience[0].company : '',
-          "education": resume.education && resume.education.primary && resume.education.primary.length > 0 
-            ? `${resume.education.primary[0].name || ''} - ${resume.education.primary[0].organization || ''}` 
-            : '',
-          "skills": resume.skill_set && resume.skill_set.length > 0 ? resume.skill_set.join(', ') : '',
-          "updated_at": new Date().toISOString().split('T')[0], // Только дата без времени
-          "Hiring Status": "Candidate"
-        }
-      }]
-    };
+    // Преобразуем данные для Airtable
+    const airtableData = transformResumeData(resume);
     
     // Отправляем в Airtable
     const airtableResponse = await fetch(
@@ -1691,113 +1555,114 @@ app.post('/save-to-airtable', isAuthenticated, async (req, res) => {
     }
     
     const result = await airtableResponse.json();
-       // Показываем результат
-   res.send(`
-     <!DOCTYPE html>
-     <html lang="ru">
-     <head>
-       <meta charset="UTF-8">
-       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-       <title>Успешно сохранено - HH → Airtable</title>
-       <style>
-         body {
-           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-           min-height: 100vh;
-           display: flex;
-           align-items: center;
-           justify-content: center;
-         }
-         .container {
-           background: white;
-           padding: 40px;
-           border-radius: 20px;
-           box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-           max-width: 500px;
-           width: 90%;
-           text-align: center;
-         }
-         .success-icon {
-           font-size: 64px;
-           margin-bottom: 20px;
-         }
-         h1 {
-           color: #48bb78;
-           margin-bottom: 20px;
-         }
-         p {
-           color: #4a5568;
-           margin-bottom: 30px;
-           line-height: 1.6;
-         }
-         .button {
-           display: inline-block;
-           padding: 12px 30px;
-           margin: 10px;
-           background: #667eea;
-           color: white;
-           text-decoration: none;
-           border-radius: 25px;
-           font-weight: 500;
-           transition: all 0.3s ease;
-         }
-         .button:hover {
-           background: #5a67d8;
-           transform: translateY(-2px);
-           box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-         }
-         .button.secondary {
-           background: #48bb78;
-         }
-         .button.secondary:hover {
-           background: #38a169;
-         }
-         .details {
-           background: #f7fafc;
-           padding: 20px;
-           border-radius: 10px;
-           margin: 20px 0;
-           text-align: left;
-         }
-         .details-title {
-           font-weight: 600;
-           color: #2d3748;
-           margin-bottom: 10px;
-         }
-         .details-item {
-           color: #4a5568;
-           margin: 5px 0;
-         }
-       </style>
-     </head>
-     <body>
-       <div class="container">
-         <div class="success-icon">✅</div>
-         <h1>Успешно сохранено!</h1>
-         <p>Резюме было успешно добавлено в вашу базу Airtable.</p>
-         
-         <div class="details">
-           <div class="details-title">Детали записи:</div>
-           <div class="details-item">ID в Airtable: ${result.records[0].id}</div>
-           <div class="details-item">Кандидат: ${airtableData.records[0].fields.Name}</div>
-           <div class="details-item">Должность: ${airtableData.records[0].fields["Job_Title"]}</div>
-         </div>
-         
-         <a href="/search" class="button">🔍 Продолжить поиск</a>
-         <a href="https://airtable.com/${process.env.AIRTABLE_BASE_ID}" target="_blank" class="button secondary">📊 Открыть Airtable</a>
-       </div>
-     </body>
-     </html>
-   `);
-   
- } catch (error) {
-   console.error('Save error:', error);
-   res.send(`
-     <h1>Ошибка сохранения</h1>
-     <p>${error.message}</p>
-     <a href="/resume/${req.body.resumeId}">Вернуться к резюме</a>
-   `);
- }
+    
+    // Показываем результат
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="ru">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Успешно сохранено - HH → Airtable</title>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+          }
+          .success-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+          }
+          h1 {
+            color: #48bb78;
+            margin-bottom: 20px;
+          }
+          p {
+            color: #4a5568;
+            margin-bottom: 30px;
+            line-height: 1.6;
+          }
+          .button {
+            display: inline-block;
+            padding: 12px 30px;
+            margin: 10px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+          }
+          .button:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+          }
+          .button.secondary {
+            background: #48bb78;
+          }
+          .button.secondary:hover {
+            background: #38a169;
+          }
+          .details {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: left;
+          }
+          .details-title {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 10px;
+          }
+          .details-item {
+            color: #4a5568;
+            margin: 5px 0;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="success-icon">✅</div>
+          <h1>Успешно сохранено!</h1>
+          <p>Резюме было успешно добавлено в вашу базу Airtable.</p>
+          
+          <div class="details">
+            <div class="details-title">Детали записи:</div>
+            <div class="details-item">ID в Airtable: ${result.records[0].id}</div>
+            <div class="details-item">Кандидат: ${airtableData.records[0].fields.Name}</div>
+            <div class="details-item">Должность: ${airtableData.records[0].fields["Job_Title"]}</div>
+          </div>
+          
+          <a href="/search" class="button">🔍 Продолжить поиск</a>
+          <a href="https://airtable.com/${process.env.AIRTABLE_BASE_ID}" target="_blank" class="button secondary">📊 Открыть Airtable</a>
+        </div>
+      </body>
+      </html>
+    `);
+    
+  } catch (error) {
+    console.error('Save error:', error);
+    res.send(`
+      <h1>Ошибка сохранения</h1>
+      <p>${error.message}</p>
+      <a href="/resume/${req.body.resumeId}">Вернуться к резюме</a>
+    `);
+  }
 });
 
 // API endpoint для массового сохранения резюме
@@ -1829,10 +1694,7 @@ app.post('/api/save-to-airtable', isAuthenticated, async (req, res) => {
     let hadFreeContacts = false;
     
     // Проверяем наличие контактов
-    const hasContacts = resumeData.contact && (
-      resumeData.contact.email || 
-      resumeData.contact.phone && resumeData.contact.phone.length > 0
-    );
+    const hasContacts = resumeData.contact && resumeData.contact.length > 0;
     
     if (hasContacts) {
       // Контакты уже есть (бесплатные)
@@ -1840,7 +1702,7 @@ app.post('/api/save-to-airtable', isAuthenticated, async (req, res) => {
     } else if (openPaidContacts && resumeData.actions && resumeData.actions.get_with_contact) {
       // Открываем платные контакты
       const contactResponse = await fetch(resumeData.actions.get_with_contact.url, {
-        method: resumeData.actions.get_with_contact.method,
+        method: resumeData.actions.get_with_contact.method || 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
           'User-Agent': 'HH-Airtable App/1.0'
