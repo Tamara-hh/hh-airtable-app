@@ -844,8 +844,7 @@ app.get('/search-results', isAuthenticated, async (req, res) => {
 }
           </style>
       <script>
-function toggleResumeSelection(checkbox, resumeId) {
-alert('Чекбокс нажат!');
+function toggleResumeSelection(checkbox) {
   const card = checkbox.closest('.resume-card');
   if (checkbox.checked) {
     card.classList.add('selected');
@@ -969,7 +968,7 @@ window.onload = function() {
             ${data.items.map(resume => `
               <div class="resume-card">
               <div class="checkbox-container">
-  <input type="checkbox" class="resume-checkbox" value="${resume.id}" onchange="toggleResumeSelection(this, '${resume.id}')">
+  <input type="checkbox" class="resume-checkbox" value="${resume.id}" onchange="toggleResumeSelection(this)">
 </div>
                 <div class="resume-header">
                   <div class="resume-title">${resume.title || 'Без названия'}</div>
