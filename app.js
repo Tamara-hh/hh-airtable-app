@@ -495,6 +495,15 @@ app.get('/search', isAuthenticated, (req, res) => {
                 <option value="88">Краснодар</option>
                 <option value="104">Ростов-на-Дону</option>
                 <option value="113">Вся Россия</option>
+                <option value="74">Челябинск</option>
+                <option value="40">Казахстан</option>
+                <option value="97">Узбекистан</option>
+                <option value="160">Алматы</option>
+                <option value="159">Астана</option>
+                <option value="164">Караганда</option>
+                <option value="167">Усть-Каменогорск</option>
+                <option value="2759">Ташкент</option>
+                <option value="2761">Самарканд</option>
               </select>
             </div>
             
