@@ -541,7 +541,7 @@ app.get('/search', isAuthenticated, (req, res) => {
             </div>
           </div>
           
-          <button type="submit">🔍 Начать поиск</button>
+          
 
           <div class="form-group">
             <label for="skills_must_have">Обязательные навыки (через запятую)</label>
@@ -565,7 +565,7 @@ app.get('/search', isAuthenticated, (req, res) => {
             <p class="help-text">Достаточно хотя бы одного из указанных навыков</p>
           </div>
         </form>
-        
+            <button type="submit">🔍 Начать поиск</button>
         <div class="back-link">
           <a href="/">← Вернуться на главную</a>
         </div>
@@ -894,10 +894,10 @@ async function saveSelected() {
   let saved = 0;
   let errors = 0;
   
-  for (let i = 0; i < checked.length; i++) {
-    const resumeId = checked[i].value;
-    progressText.textContent = `Сохранение ${i + 1} из ${checked.length}...`;
-    progressFill.style.width = ((i + 1) / checked.length * 100) + '%';
+  for (let j = 0; j < checked.length; j++) {
+    const resumeId = checked[j].value;
+    progressText.textContent = 'Сохранение ' + (j + 1) + ' из ' + checked.length + '...';
+    progressFill.style.width = ((j + 1) / checked.length * 100) + '%';
     
     try {
       const response = await fetch('/api/save-to-airtable', {
@@ -919,7 +919,7 @@ async function saveSelected() {
   }
   
   progressModal.style.display = 'none';
-  alert(`Сохранение завершено!\n\nУспешно сохранено: ${saved}\nОшибок: ${errors}`);
+  alert('Сохранение завершено!\n\nУспешно сохранено: ' + saved + '\nОшибок: ' + errors);
   
   if (saved > 0) {
     deselectAll();
@@ -1011,7 +1011,7 @@ async function saveSelected() {
         </div>
       </body>
       </html>
-    `);
+      `);
   } catch (error) {
     console.error('Search error:', error);
     res.send(`
