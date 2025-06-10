@@ -845,6 +845,8 @@ app.get('/search-results', isAuthenticated, async (req, res) => {
           </style>
       <script>
 window.toggleResumeSelection = function(checkbox) {
+  console.log('Checkbox clicked!');
+  const card = checkbox.closest('.resume-card');
   const card = checkbox.closest('.resume-card');
   if (checkbox.checked) {
     card.classList.add('selected');
@@ -928,8 +930,11 @@ window.saveSelected = async function() {
 }
   // Инициализация при загрузке страницы
 window.onload = function() {
+window.onload = function() {
+  console.log('Page loaded, initializing...');
   window.updateSelectionInfo();
 };
+
 </script>
           </head>
       <body>
