@@ -78,7 +78,7 @@ function isAuthenticated(req, res, next) {
       req.session.userInfo = storedTokens.userInfo;
     }
   }
-    if (req.session.tokens && req.session.tokens.access_token) {
+  if (req.session.tokens && req.session.tokens.access_token) {
     next();
   } else {
     res.redirect('/');
@@ -95,7 +95,7 @@ app.get('/', (req, res) => {
       req.session.userInfo = storedTokens.userInfo;
     }
   }
-    const isLoggedIn = req.session.tokens && req.session.tokens.access_token;
+  const isLoggedIn = req.session.tokens && req.session.tokens.access_token;
   
   res.send(`
     <!DOCTYPE html>
@@ -295,14 +295,14 @@ app.get('/callback', async (req, res) => {
     const tokenResponse = await fetch('https://hh.ru/oauth/token', {
       method: 'POST',
       headers: {
-  'Content-Type': 'application/x-www-form-urlencoded',
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Accept': 'application/json',
-  'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
-  'Accept-Encoding': 'gzip, deflate, br',
-  'Origin': 'https://hh.ru',
-  'Referer': 'https://hh.ru/'
-},
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+        'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Origin': 'https://hh.ru',
+        'Referer': 'https://hh.ru/'
+      },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         client_id: process.env.HH_CLIENT_ID,
@@ -311,6 +311,7 @@ app.get('/callback', async (req, res) => {
         code: code
       })
     });
+    
     const responseText = await tokenResponse.text();
     console.log('HH Response Status:', tokenResponse.status);
     console.log('HH Response Headers:', tokenResponse.headers.raw());
@@ -326,9 +327,10 @@ app.get('/callback', async (req, res) => {
     
     console.log('Token response status:', tokenResponse.status);
     console.log('Token response:', tokens);
+    
     if (tokens.error) {
       console.error('HH OAuth error:', tokens);
-        throw new Error(tokens.error_description || tokens.error);
+      throw new Error(tokens.error_description || tokens.error);
     }
     
     // Сохраняем токены в сессию
@@ -372,7 +374,8 @@ app.get('/search', isAuthenticated, (req, res) => {
       req.session.userInfo = storedTokens.userInfo;
     }
   }
-    res.send(`
+  
+  res.send(`
     <!DOCTYPE html>
     <html lang="ru">
     <head>
@@ -541,8 +544,6 @@ app.get('/search', isAuthenticated, (req, res) => {
             </div>
           </div>
           
-          
-
           <div class="form-group">
             <label for="skills_must_have">Обязательные навыки (через запятую)</label>
             <input 
@@ -564,8 +565,10 @@ app.get('/search', isAuthenticated, (req, res) => {
             >
             <p class="help-text">Достаточно хотя бы одного из указанных навыков</p>
           </div>
-            <button type="submit">🔍 Начать поиск</button>
+          
+          <button type="submit">🔍 Начать поиск</button>
         </form>
+        
         <div class="back-link">
           <a href="/">← Вернуться на главную</a>
         </div>
@@ -759,91 +762,91 @@ app.get('/search-results', isAuthenticated, async (req, res) => {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
           }
-        .checkbox-container {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 10;
-}
-.checkbox-container input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-}
-.resume-card.selected {
-  background: #e6f3ff;
-  border: 2px solid #667eea;
-}
-.selection-controls {
-  background: white;
-  padding: 20px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.selection-info {
-  font-size: 16px;
-  color: #4a5568;
-}
-.selection-buttons {
-  display: flex;
-  gap: 10px;
-}
-.button.save-selected {
-  background: #48bb78;
-  color: white;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s;
-}
-.button.save-selected:hover {
-  background: #38a169;
-}
-.button.save-selected:disabled {
-  background: #cbd5e0;
-  cursor: not-allowed;
-}
-.progress-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-.progress-content {
-  background: white;
-  padding: 30px;
-  border-radius: 10px;
-  text-align: center;
-  min-width: 400px;
-}
-.progress-bar {
-  width: 100%;
-  height: 20px;
-  background: #e2e8f0;
-  border-radius: 10px;
-  margin: 20px 0;
-  overflow: hidden;
-}
-.progress-fill {
-  height: 100%;
-  background: #48bb78;
-  width: 0%;
-  transition: width 0.3s;
-}
-          </style>
-      <script>
+          .checkbox-container {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+          }
+          .checkbox-container input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+          }
+          .resume-card.selected {
+            background: #e6f3ff;
+            border: 2px solid #667eea;
+          }
+          .selection-controls {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          .selection-info {
+            font-size: 16px;
+            color: #4a5568;
+          }
+          .selection-buttons {
+            display: flex;
+            gap: 10px;
+          }
+          .button.save-selected {
+            background: #48bb78;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+          }
+          .button.save-selected:hover {
+            background: #38a169;
+          }
+          .button.save-selected:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+          }
+          .progress-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+          }
+          .progress-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            min-width: 400px;
+          }
+          .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e2e8f0;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+          }
+          .progress-fill {
+            height: 100%;
+            background: #48bb78;
+            width: 0%;
+            transition: width 0.3s;
+          }
+        </style>
+        <script>
 window.toggleResumeSelection = function(checkbox) {
   console.log('Checkbox clicked!');
   const card = checkbox.closest('.resume-card');
@@ -898,7 +901,7 @@ window.saveSelected = async function() {
   
   for (let j = 0; j < checked.length; j++) {
     const resumeId = checked[j].value;
-    progressText.textContent = 'Сохранение ' + (j + 1) + ' из ' + checked.length + '...';
+    progressText.textContent = 'Saving ' + (j + 1) + ' of ' + checked.length + '...';
     progressFill.style.width = ((j + 1) / checked.length * 100) + '%';
     
     try {
@@ -921,20 +924,20 @@ window.saveSelected = async function() {
   }
   
   progressModal.style.display = 'none';
-  //alert('Saved successfully!\n\nSuccessfully saved: ' + saved + '\nErrors: ' + errors);
+  alert('Saved: ' + saved + ', Errors: ' + errors);
   
   if (saved > 0) {
-  window.deselectAll();
+    window.deselectAll();
   }
 }
-  // Инициализация при загрузке страницы
+
+// Инициализация при загрузке страницы
 window.onload = function() {
   console.log('Page loaded, initializing...');
   window.updateSelectionInfo();
 };
-
 </script>
-          </head>
+      </head>
       <body>
         <div class="container">
           <h1>📋 Результаты поиска</h1>
@@ -944,35 +947,36 @@ window.onload = function() {
             <strong>Показано:</strong> ${data.items.length} | 
             <strong>Поиск:</strong> "${req.query.text}"</p>
           </div>
+          
           <div class="selection-controls">
-  <div class="selection-info">
-    Выбрано <span id="selection-count">0</span> из <span id="total-count">${data.items.length}</span> резюме
-  </div>
-  <div class="selection-buttons">
-    <button type="button" class="button secondary" onclick="window.selectAll()">Выбрать все</button>
-    <button type="button" class="button secondary" onclick="window.deselectAll()">Снять выделение</button>
-    <button type="button" id="save-selected" class="button save-selected" onclick="window.saveSelected()" disabled>
-      💾 Сохранить выбранные в Airtable
-    </button>
-  </div>
-</div>
+            <div class="selection-info">
+              Выбрано <span id="selection-count">0</span> из <span id="total-count">${data.items.length}</span> резюме
+            </div>
+            <div class="selection-buttons">
+              <button type="button" class="button secondary" onclick="window.selectAll()">Выбрать все</button>
+              <button type="button" class="button secondary" onclick="window.deselectAll()">Снять выделение</button>
+              <button type="button" id="save-selected" class="button save-selected" onclick="window.saveSelected()" disabled>
+                💾 Сохранить выбранные в Airtable
+              </button>
+            </div>
+          </div>
 
-<div id="progress-modal" class="progress-modal">
-  <div class="progress-content">
-    <h2>Сохранение резюме</h2>
-    <p id="progress-text">Подготовка...</p>
-    <div class="progress-bar">
-      <div id="progress-fill" class="progress-fill"></div>
-    </div>
-  </div>
-</div>
+          <div id="progress-modal" class="progress-modal">
+            <div class="progress-content">
+              <h2>Сохранение резюме</h2>
+              <p id="progress-text">Подготовка...</p>
+              <div class="progress-bar">
+                <div id="progress-fill" class="progress-fill"></div>
+              </div>
+            </div>
+          </div>
           
           <div class="resume-grid">
             ${data.items.map(resume => `
               <div class="resume-card">
-              <div class="checkbox-container">
-  <input type="checkbox" class="resume-checkbox" value="${resume.id}" onchange="window.toggleResumeSelection(this)">
-</div>
+                <div class="checkbox-container">
+                  <input type="checkbox" class="resume-checkbox" value="${resume.id}" onchange="window.toggleResumeSelection(this)">
+                </div>
                 <div class="resume-header">
                   <div class="resume-title">${resume.title || 'Без названия'}</div>
                   <div class="resume-name">
@@ -1019,7 +1023,7 @@ window.onload = function() {
         </div>
       </body>
       </html>
-      `);
+    `);
   } catch (error) {
     console.error('Search error:', error);
     res.send(`
@@ -1369,9 +1373,6 @@ app.post('/view-contacts', isAuthenticated, async (req, res) => {
   }
 });
 
-// Обработка JSON запросов
-
-
 // Сохранение в Airtable (JSON версия для AJAX)
 app.post('/api/save-to-airtable', isAuthenticated, async (req, res) => {
   try {
@@ -1538,114 +1539,113 @@ app.post('/save-to-airtable', isAuthenticated, async (req, res) => {
     }
     
     const result = await airtableResponse.json();
-    
-    // Показываем результат
-    res.send(`
-      <!DOCTYPE html>
-      <html lang="ru">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Успешно сохранено - HH → Airtable</title>
-        <style>
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-          .container {
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            max-width: 500px;
-            width: 90%;
-            text-align: center;
-          }
-          .success-icon {
-            font-size: 64px;
-            margin-bottom: 20px;
-          }
-          h1 {
-            color: #48bb78;
-            margin-bottom: 20px;
-          }
-          p {
-            color: #4a5568;
-            margin-bottom: 30px;
-            line-height: 1.6;
-          }
-          .button {
-            display: inline-block;
-            padding: 12px 30px;
-            margin: 10px;
-            background: #667eea;
-            color: white;
-            text-decoration: none;
-            border-radius: 25px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-          }
-          .button:hover {
-            background: #5a67d8;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-          }
-          .button.secondary {
-            background: #48bb78;
-          }
-          .button.secondary:hover {
-            background: #38a169;
-          }
-          .details {
-            background: #f7fafc;
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px 0;
-            text-align: left;
-          }
-          .details-title {
-            font-weight: 600;
-            color: #2d3748;
-            margin-bottom: 10px;
-          }
-          .details-item {
-            color: #4a5568;
-            margin: 5px 0;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="success-icon">✅</div>
-          <h1>Успешно сохранено!</h1>
-          <p>Резюме было успешно добавлено в вашу базу Airtable.</p>
-          
-          <div class="details">
-            <div class="details-title">Детали записи:</div>
-            <div class="details-item">ID в Airtable: ${result.records[0].id}</div>
-            <div class="details-item">Кандидат: ${airtableData.records[0].fields.Name}</div>
-            <div class="details-item">Должность: ${airtableData.records[0].fields["Job_Title"]}</div>
-          </div>
-          
-          <a href="/search" class="button">🔍 Продолжить поиск</a>
-          <a href="https://airtable.com/${process.env.AIRTABLE_BASE_ID}" target="_blank" class="button secondary">📊 Открыть Airtable</a>
-        </div>
-      </body>
-      </html>
-    `);
-    
-  } catch (error) {
-    console.error('Save error:', error);
-    res.send(`
-      <h1>Ошибка сохранения</h1>
-      <p>${error.message}</p>
-      <a href="/resume/${req.body.resumeId}">Вернуться к резюме</a>
-    `);
-  }
+       // Показываем результат
+   res.send(`
+     <!DOCTYPE html>
+     <html lang="ru">
+     <head>
+       <meta charset="UTF-8">
+       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+       <title>Успешно сохранено - HH → Airtable</title>
+       <style>
+         body {
+           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+           min-height: 100vh;
+           display: flex;
+           align-items: center;
+           justify-content: center;
+         }
+         .container {
+           background: white;
+           padding: 40px;
+           border-radius: 20px;
+           box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+           max-width: 500px;
+           width: 90%;
+           text-align: center;
+         }
+         .success-icon {
+           font-size: 64px;
+           margin-bottom: 20px;
+         }
+         h1 {
+           color: #48bb78;
+           margin-bottom: 20px;
+         }
+         p {
+           color: #4a5568;
+           margin-bottom: 30px;
+           line-height: 1.6;
+         }
+         .button {
+           display: inline-block;
+           padding: 12px 30px;
+           margin: 10px;
+           background: #667eea;
+           color: white;
+           text-decoration: none;
+           border-radius: 25px;
+           font-weight: 500;
+           transition: all 0.3s ease;
+         }
+         .button:hover {
+           background: #5a67d8;
+           transform: translateY(-2px);
+           box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+         }
+         .button.secondary {
+           background: #48bb78;
+         }
+         .button.secondary:hover {
+           background: #38a169;
+         }
+         .details {
+           background: #f7fafc;
+           padding: 20px;
+           border-radius: 10px;
+           margin: 20px 0;
+           text-align: left;
+         }
+         .details-title {
+           font-weight: 600;
+           color: #2d3748;
+           margin-bottom: 10px;
+         }
+         .details-item {
+           color: #4a5568;
+           margin: 5px 0;
+         }
+       </style>
+     </head>
+     <body>
+       <div class="container">
+         <div class="success-icon">✅</div>
+         <h1>Успешно сохранено!</h1>
+         <p>Резюме было успешно добавлено в вашу базу Airtable.</p>
+         
+         <div class="details">
+           <div class="details-title">Детали записи:</div>
+           <div class="details-item">ID в Airtable: ${result.records[0].id}</div>
+           <div class="details-item">Кандидат: ${airtableData.records[0].fields.Name}</div>
+           <div class="details-item">Должность: ${airtableData.records[0].fields["Job_Title"]}</div>
+         </div>
+         
+         <a href="/search" class="button">🔍 Продолжить поиск</a>
+         <a href="https://airtable.com/${process.env.AIRTABLE_BASE_ID}" target="_blank" class="button secondary">📊 Открыть Airtable</a>
+       </div>
+     </body>
+     </html>
+   `);
+   
+ } catch (error) {
+   console.error('Save error:', error);
+   res.send(`
+     <h1>Ошибка сохранения</h1>
+     <p>${error.message}</p>
+     <a href="/resume/${req.body.resumeId}">Вернуться к резюме</a>
+   `);
+ }
 });
 
 // Выход
@@ -1663,5 +1663,5 @@ app.get('/logout', (req, res) => {
 // Запуск сервера
 app.listen(PORT, () => {
   console.log(`Сервер запущен на порту ${PORT}`);
-  console.log(`Откройте http://localhost:${PORT} в браузере`);
+  console.log(`Приложение доступно на Render.com`);
 });
