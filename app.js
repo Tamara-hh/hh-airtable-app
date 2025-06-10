@@ -138,6 +138,66 @@ function transformResumeData(resume) {
     ]
   };
 }
+// Функция проверки дубликатов в Airtable
+async function checkDuplicateInAirtable(resume) {
+  try {
+    // Извлекаем email и телефон из резюме
+    let email = '';
+    let phone = '';
+    
+    if (resume.contact) {
+      resume.contact.forEach(contact => {
+        if (contact.type.id === 'email') {
+          email = contact.value;
+        }
+        if (contact.type.id === 'cell' || contact.type.id === 'home') {
+          phone = contact.value.formatted || contact.value;
+        }
+      });
+    }
+    
+    // Формируем URL резюме
+    const resumeUrl = resume.alternate_url || '';
+    
+    // Создаем условия для проверки
+    const conditions = [];
+    if (email) conditions.push(`{Email}='${email}'`);
+    if (phone) conditions.push(`{Phone number}='${phone}'`);
+    if (resumeUrl) conditions.push(`{resume_url}='${resumeUrl}'`);
+    
+    // Если нет данных для проверки, считаем что дубликата нет
+    if (conditions.length === 0) return false;
+    
+    // Формируем формулу для фильтрации
+    const formula = `OR(${conditions.join(',')})`;
+    
+    // Делаем запрос к Airtable
+    const response = await fetch(
+      `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/People?` +
+      `filterByFormula=${encodeURIComponent(formula)}&maxRecords=1`,
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    
+    if (!response.ok) {
+      console.error('Error checking duplicate:', await response.text());
+      return false; // При ошибке разрешаем сохранение
+    }
+    
+    const data = await response.json();
+    
+    // Если найдена хотя бы одна запись - это дубликат
+    return data.records && data.records.length > 0;
+    
+  } catch (error) {
+    console.error('Error in checkDuplicateInAirtable:', error);
+    return false; // При ошибке разрешаем сохранение
+  }
+}
 
 // Главная страница
 app.get('/', (req, res) => {
