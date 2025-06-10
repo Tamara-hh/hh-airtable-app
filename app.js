@@ -946,9 +946,9 @@ window.onload = function() {
     Выбрано <span id="selection-count">0</span> из <span id="total-count">${data.items.length}</span> резюме
   </div>
   <div class="selection-buttons">
-    <button type="button" class="button secondary" onclick="selectAll()">Выбрать все</button>
-    <button type="button" class="button secondary" onclick="deselectAll()">Снять выделение</button>
-    <button type="button" id="save-selected" class="button save-selected" onclick="saveSelected()" disabled>
+    <button type="button" class="button secondary" onclick="window.selectAll()">Выбрать все</button>
+    <button type="button" class="button secondary" onclick="window.deselectAll()">Снять выделение</button>
+    <button type="button" id="save-selected" class="button save-selected" onclick="window.saveSelected()" disabled>
       💾 Сохранить выбранные в Airtable
     </button>
   </div>
@@ -968,7 +968,7 @@ window.onload = function() {
             ${data.items.map(resume => `
               <div class="resume-card">
               <div class="checkbox-container">
-  <input type="checkbox" class="resume-checkbox" value="${resume.id}" onchange="toggleResumeSelection(this)">
+  <input type="checkbox" class="resume-checkbox" value="${resume.id}" onchange="window.toggleResumeSelection(this)">
 </div>
                 <div class="resume-header">
                   <div class="resume-title">${resume.title || 'Без названия'}</div>
