@@ -844,17 +844,17 @@ app.get('/search-results', isAuthenticated, async (req, res) => {
 }
           </style>
       <script>
-function toggleResumeSelection(checkbox) {
+window.toggleResumeSelection = function(checkbox) {
   const card = checkbox.closest('.resume-card');
   if (checkbox.checked) {
     card.classList.add('selected');
   } else {
     card.classList.remove('selected');
   }
-  updateSelectionInfo();
+  window.updateSelectionInfo();
 }
 
-function updateSelectionInfo() {
+window.updateSelectionInfo = function() {
   const checkboxes = document.querySelectorAll('.resume-checkbox');
   const checked = document.querySelectorAll('.resume-checkbox:checked');
   document.getElementById('selection-count').textContent = checked.length;
@@ -862,25 +862,25 @@ function updateSelectionInfo() {
   document.getElementById('save-selected').disabled = checked.length === 0;
 }
 
-function selectAll() {
+window.selectAll = function() {
   const checkboxes = document.querySelectorAll('.resume-checkbox');
   checkboxes.forEach(cb => {
     cb.checked = true;
     cb.closest('.resume-card').classList.add('selected');
   });
-  updateSelectionInfo();
+  window.updateSelectionInfo();
 }
 
-function deselectAll() {
+window.deselectAll = function() {
   const checkboxes = document.querySelectorAll('.resume-checkbox');
   checkboxes.forEach(cb => {
     cb.checked = false;
     cb.closest('.resume-card').classList.remove('selected');
   });
-  updateSelectionInfo();
+  window.updateSelectionInfo();
 }
 
-async function saveSelected() {
+window.saveSelected = async function() {
   const checked = document.querySelectorAll('.resume-checkbox:checked');
   if (checked.length === 0) return;
   
@@ -923,7 +923,7 @@ async function saveSelected() {
   alert('Сохранение завершено!\n\nУспешно сохранено: ' + saved + '\nОшибок: ' + errors);
   
   if (saved > 0) {
-    deselectAll();
+  window.deselectAll();
   }
 }
   // Инициализация при загрузке страницы
