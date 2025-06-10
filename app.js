@@ -564,8 +564,8 @@ app.get('/search', isAuthenticated, (req, res) => {
             >
             <p class="help-text">Достаточно хотя бы одного из указанных навыков</p>
           </div>
-        </form>
             <button type="submit">🔍 Начать поиск</button>
+        </form>
         <div class="back-link">
           <a href="/">← Вернуться на главную</a>
         </div>
