@@ -762,7 +762,8 @@ app.get('/search-results', isAuthenticated, async (req, res) => {
         .checkbox-container {
   position: absolute;
   top: 10px;
-  left: 10px;
+  right: 10px;
+  z-index: 10;
 }
 .checkbox-container input[type="checkbox"] {
   width: 20px;
@@ -925,6 +926,10 @@ async function saveSelected() {
     deselectAll();
   }
 }
+  // Инициализация при загрузке страницы
+window.onload = function() {
+  updateSelectionInfo();
+};
 </script>
           </head>
       <body>
