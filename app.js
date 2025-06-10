@@ -1051,6 +1051,7 @@ window.saveSelected = async function() {
   let paidContactsOpened = 0;
   let savedWithFreeContacts = 0;
   let savedWithoutContacts = 0;
+  let duplicates = 0;
   
   for (let j = 0; j < checked.length; j++) {
     const resumeId = checked[j].value;
@@ -1069,7 +1070,7 @@ window.saveSelected = async function() {
       
       const result = await response.json();
       
-      if (response.ok) {
+      if (response.ok && result.success) {
         saved++;
         if (result.paidContactOpened) {
           paidContactsOpened++;
@@ -1078,6 +1079,9 @@ window.saveSelected = async function() {
         } else {
           savedWithoutContacts++;
         }
+      } else if (result.isDuplicate) {
+        duplicates++;
+        console.log('Пропущен дубликат');
       } else {
         errors++;
         console.error('Ошибка сохранения:', result.error);
@@ -1097,6 +1101,9 @@ window.saveSelected = async function() {
   let reportMessage = 'ОТЧЕТ О СОХРАНЕНИИ:\\n\\n';
   reportMessage += 'Всего обработано: ' + checked.length + '\\n';
   reportMessage += 'Успешно сохранено: ' + saved + '\\n';
+  if (duplicates > 0) {
+    reportMessage += '❗ Пропущено дубликатов: ' + duplicates + '\\n';
+  }
   if (savedWithFreeContacts > 0) {
     reportMessage += '✓ С бесплатными контактами: ' + savedWithFreeContacts + '\\n';
   }
