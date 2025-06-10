@@ -666,6 +666,7 @@ app.get('/search-results', isAuthenticated, async (req, res) => {
           }
           .resume-card {
             background: white;
+            position: relative;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
@@ -758,8 +759,174 @@ app.get('/search-results', isAuthenticated, async (req, res) => {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
           }
-        </style>
-      </head>
+        .checkbox-container {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+}
+.checkbox-container input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+.resume-card.selected {
+  background: #e6f3ff;
+  border: 2px solid #667eea;
+}
+.selection-controls {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.selection-info {
+  font-size: 16px;
+  color: #4a5568;
+}
+.selection-buttons {
+  display: flex;
+  gap: 10px;
+}
+.button.save-selected {
+  background: #48bb78;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+.button.save-selected:hover {
+  background: #38a169;
+}
+.button.save-selected:disabled {
+  background: #cbd5e0;
+  cursor: not-allowed;
+}
+.progress-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.progress-content {
+  background: white;
+  padding: 30px;
+  border-radius: 10px;
+  text-align: center;
+  min-width: 400px;
+}
+.progress-bar {
+  width: 100%;
+  height: 20px;
+  background: #e2e8f0;
+  border-radius: 10px;
+  margin: 20px 0;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: #48bb78;
+  width: 0%;
+  transition: width 0.3s;
+}
+          </style>
+      <script>
+function toggleResumeSelection(checkbox, resumeId) {
+  const card = checkbox.closest('.resume-card');
+  if (checkbox.checked) {
+    card.classList.add('selected');
+  } else {
+    card.classList.remove('selected');
+  }
+  updateSelectionInfo();
+}
+
+function updateSelectionInfo() {
+  const checkboxes = document.querySelectorAll('.resume-checkbox');
+  const checked = document.querySelectorAll('.resume-checkbox:checked');
+  document.getElementById('selection-count').textContent = checked.length;
+  document.getElementById('total-count').textContent = checkboxes.length;
+  document.getElementById('save-selected').disabled = checked.length === 0;
+}
+
+function selectAll() {
+  const checkboxes = document.querySelectorAll('.resume-checkbox');
+  checkboxes.forEach(cb => {
+    cb.checked = true;
+    cb.closest('.resume-card').classList.add('selected');
+  });
+  updateSelectionInfo();
+}
+
+function deselectAll() {
+  const checkboxes = document.querySelectorAll('.resume-checkbox');
+  checkboxes.forEach(cb => {
+    cb.checked = false;
+    cb.closest('.resume-card').classList.remove('selected');
+  });
+  updateSelectionInfo();
+}
+
+async function saveSelected() {
+  const checked = document.querySelectorAll('.resume-checkbox:checked');
+  if (checked.length === 0) return;
+  
+  const progressModal = document.getElementById('progress-modal');
+  const progressFill = document.getElementById('progress-fill');
+  const progressText = document.getElementById('progress-text');
+  const saveButton = document.getElementById('save-selected');
+  
+  progressModal.style.display = 'flex';
+  saveButton.disabled = true;
+  
+  let saved = 0;
+  let errors = 0;
+  
+  for (let i = 0; i < checked.length; i++) {
+    const resumeId = checked[i].value;
+    progressText.textContent = `Сохранение ${i + 1} из ${checked.length}...`;
+    progressFill.style.width = ((i + 1) / checked.length * 100) + '%';
+    
+    try {
+      const response = await fetch('/api/save-to-airtable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resumeId })
+      });
+      
+      if (response.ok) {
+        saved++;
+      } else {
+        errors++;
+      }
+    } catch (e) {
+      errors++;
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+  
+  progressModal.style.display = 'none';
+  alert(`Сохранение завершено!\n\nУспешно сохранено: ${saved}\nОшибок: ${errors}`);
+  
+  if (saved > 0) {
+    deselectAll();
+  }
+}
+</script>
+          </head>
       <body>
         <div class="container">
           <h1>📋 Результаты поиска</h1>
@@ -769,10 +936,35 @@ app.get('/search-results', isAuthenticated, async (req, res) => {
             <strong>Показано:</strong> ${data.items.length} | 
             <strong>Поиск:</strong> "${req.query.text}"</p>
           </div>
+          <div class="selection-controls">
+  <div class="selection-info">
+    Выбрано <span id="selection-count">0</span> из <span id="total-count">${data.items.length}</span> резюме
+  </div>
+  <div class="selection-buttons">
+    <button type="button" class="button secondary" onclick="selectAll()">Выбрать все</button>
+    <button type="button" class="button secondary" onclick="deselectAll()">Снять выделение</button>
+    <button type="button" id="save-selected" class="button save-selected" onclick="saveSelected()" disabled>
+      💾 Сохранить выбранные в Airtable
+    </button>
+  </div>
+</div>
+
+<div id="progress-modal" class="progress-modal">
+  <div class="progress-content">
+    <h2>Сохранение резюме</h2>
+    <p id="progress-text">Подготовка...</p>
+    <div class="progress-bar">
+      <div id="progress-fill" class="progress-fill"></div>
+    </div>
+  </div>
+</div>
           
           <div class="resume-grid">
             ${data.items.map(resume => `
               <div class="resume-card">
+              <div class="checkbox-container">
+  <input type="checkbox" class="resume-checkbox" value="${resume.id}" onchange="toggleResumeSelection(this, '${resume.id}')">
+</div>
                 <div class="resume-header">
                   <div class="resume-title">${resume.title || 'Без названия'}</div>
                   <div class="resume-name">
@@ -1166,6 +1358,96 @@ app.post('/view-contacts', isAuthenticated, async (req, res) => {
       <p>${error.message}</p>
       <a href="/resume/${req.body.resumeId}">Вернуться к резюме</a>
     `);
+  }
+});
+
+// Обработка JSON запросов
+
+
+// Сохранение в Airtable (JSON версия для AJAX)
+app.post('/api/save-to-airtable', isAuthenticated, async (req, res) => {
+  try {
+    const { resumeId } = req.body;
+    
+    // Получаем полную информацию о резюме
+    const resumeResponse = await fetch(`https://api.hh.ru/resumes/${resumeId}`, {
+      headers: {
+        'Authorization': `Bearer ${req.session.tokens.access_token}`,
+        'User-Agent': 'HH-Airtable-App/1.0'
+      }
+    });
+    
+    if (!resumeResponse.ok) {
+      return res.status(400).json({ error: 'Не удалось получить резюме' });
+    }
+    
+    const resume = await resumeResponse.json();
+    
+    // Извлекаем контактную информацию
+    let phone = '';
+    let email = '';
+    
+    if (resume.contact) {
+      resume.contact.forEach(contact => {
+        if (contact.type.id === 'cell' || contact.type.id === 'home') {
+          phone = contact.value.formatted || contact.value;
+        }
+        if (contact.type.id === 'email') {
+          email = contact.value;
+        }
+      });
+    }
+    
+    // Подготавливаем данные для Airtable
+    const airtableData = {
+      records: [{
+        fields: {
+          "Name": `${resume.last_name || ''} ${resume.first_name || ''} ${resume.middle_name || ''}`.trim(),
+          "Job_Title": resume.title || '',
+          "Email": email || '',
+          "Phone number": phone || '',
+          "resume_url": resume.alternate_url || '',
+          "area": resume.area ? resume.area.name : '',
+          "salary_amount": resume.salary ? resume.salary.amount : 0,
+          "salary_currency": resume.salary ? resume.salary.currency : '',
+          "experience_months": resume.total_experience ? resume.total_experience.months : 0,
+          "age": resume.age || 0,
+          "last_employer": resume.experience && resume.experience.length > 0 ? resume.experience[0].company : '',
+          "education": resume.education && resume.education.primary && resume.education.primary.length > 0 
+            ? `${resume.education.primary[0].name || ''} - ${resume.education.primary[0].organization || ''}` 
+            : '',
+          "skills": resume.skill_set && resume.skill_set.length > 0 ? resume.skill_set.join(', ') : '',
+          "updated_at": new Date().toISOString().split('T')[0],
+          "Hiring Status": "Candidate"
+        }
+      }]
+    };
+    
+    // Отправляем в Airtable
+    const airtableResponse = await fetch(
+      `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/People`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(airtableData)
+      }
+    );
+    
+    if (!airtableResponse.ok) {
+      const error = await airtableResponse.text();
+      console.error('Airtable error:', error);
+      return res.status(500).json({ error: 'Не удалось сохранить в Airtable' });
+    }
+    
+    const result = await airtableResponse.json();
+    res.json({ success: true, recordId: result.records[0].id });
+    
+  } catch (error) {
+    console.error('Save error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
