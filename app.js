@@ -102,7 +102,7 @@ function transformResumeData(resume) {
   if (resume.contact) {
     resume.contact.forEach(contact => {
       if (contact.type.id === 'cell' || contact.type.id === 'home') {
-        phone = contact.value.formatted || contact.value;
+        phone = (contact.value && contact.value.formatted) ? contact.value.formatted : contact.value || '';
       }
       if (contact.type.id === 'email') {
         email = contact.value;
@@ -151,7 +151,7 @@ async function checkDuplicateInAirtable(resume) {
           email = contact.value;
         }
         if (contact.type.id === 'cell' || contact.type.id === 'home') {
-          phone = contact.value.formatted || contact.value;
+          phone = (contact.value && contact.value.formatted) ? contact.value.formatted : contact.value || '';
         }
       });
     }
