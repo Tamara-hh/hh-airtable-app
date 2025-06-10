@@ -171,17 +171,24 @@ async function checkDuplicateInAirtable(resume) {
     // Формируем формулу для фильтрации
     const formula = `OR(${conditions.join(',')})`;
     
-    // Делаем запрос к Airtable
-    const response = await fetch(
-      `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/People?` +
-      `filterByFormula=${encodeURIComponent(formula)}&maxRecords=1`,
-      {
-        headers: {
-          'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
-          'Content-Type': 'application/json'
+    // Делаем запрос к Airtable с timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 секунд timeout
+    
+    try {
+      const response = await fetch(
+        `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/People?` +
+        `filterByFormula=${encodeURIComponent(formula)}&maxRecords=1`,
+        {
+          headers: {
+            'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          signal: controller.signal
         }
-      }
-    );
+      );
+      
+      clearTimeout(timeoutId);
     
     if (!response.ok) {
       console.error('Error checking duplicate:', await response.text());
@@ -193,6 +200,14 @@ async function checkDuplicateInAirtable(resume) {
     // Если найдена хотя бы одна запись - это дубликат
     return data.records && data.records.length > 0;
     
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        console.error('Timeout checking duplicate - allowing save');
+        return false; // При timeout разрешаем сохранение
+      }
+      throw fetchError;
+    }
   } catch (error) {
     console.error('Error in checkDuplicateInAirtable:', error);
     return false; // При ошибке разрешаем сохранение
