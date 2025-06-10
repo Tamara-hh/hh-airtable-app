@@ -84,6 +84,81 @@ function isAuthenticated(req, res, next) {
     res.redirect('/');
   }
 }
+// Функция преобразования данных резюме для Airtable
+function transformResumeData(resume) {
+  const fields = {
+    Name: `${resume.first_name || ''} ${resume.last_name || ''}`.trim() || 'Без имени',
+    Resume_ID: resume.id,
+    HH_URL: resume.alternate_url || '',
+    Job_Title: resume.title || '',
+    Age: resume.age || null,
+    City: resume.area ? resume.area.name : '',
+    Metro: resume.metro ? resume.metro.map(m => m.station_name).join(', ') : '',
+    Total_Experience_Months: resume.total_experience ? resume.total_experience.months : 0
+  };
+  
+  // Зарплата
+  if (resume.salary) {
+    fields.Salary_Amount = resume.salary.amount || 0;
+    fields.Salary_Currency = resume.salary.currency || 'RUR';
+  }
+  
+  // Контакты
+  if (resume.contact) {
+    if (resume.contact.email) {
+      fields.Email = resume.contact.email;
+    }
+    if (resume.contact.phone && resume.contact.phone.length > 0) {
+      fields.Phone = resume.contact.phone[0].formatted || resume.contact.phone[0].number || '';
+    }
+  }
+  
+  // Навыки
+  if (resume.skill_set && resume.skill_set.length > 0) {
+    fields.Skills = resume.skill_set.join(', ');
+  }
+  
+  // Языки
+  if (resume.language && resume.language.length > 0) {
+    fields.Languages = resume.language.map(lang => 
+      `${lang.name} (${lang.level.name})`
+    ).join(', ');
+  }
+  
+  // Образование
+  if (resume.education) {
+    if (resume.education.primary && resume.education.primary.length > 0) {
+      const primary = resume.education.primary[0];
+      fields.Education_Level = resume.education.level ? resume.education.level.name : '';
+      fields.University = primary.name || '';
+      fields.Faculty = primary.result || '';
+      fields.Graduation_Year = primary.year || null;
+    }
+  }
+  
+  // Опыт работы
+  if (resume.experience && resume.experience.length > 0) {
+    const lastExp = resume.experience[0];
+    fields.Last_Company = lastExp.company || '';
+    fields.Last_Position = lastExp.position || '';
+    
+    const allExperience = resume.experience.map(exp => 
+      `${exp.position} в ${exp.company} (${exp.start} - ${exp.end || 'настоящее время'})`
+    ).join('\n');
+    fields.Experience_Details = allExperience;
+  }
+  
+  // Дата обновления резюме
+  fields.Updated_At = resume.updated_at || new Date().toISOString();
+  
+  return {
+    records: [
+      {
+        fields: fields
+      }
+    ]
+  };
+}
 
 // Главная страница
 app.get('/', (req, res) => {
@@ -1723,6 +1798,95 @@ app.post('/save-to-airtable', isAuthenticated, async (req, res) => {
      <a href="/resume/${req.body.resumeId}">Вернуться к резюме</a>
    `);
  }
+});
+
+// API endpoint для массового сохранения резюме
+app.post('/api/save-to-airtable', isAuthenticated, async (req, res) => {
+  try {
+    const { resumeId, openPaidContacts } = req.body;
+    
+    if (!resumeId) {
+      return res.status(400).json({ error: 'Resume ID is required' });
+    }
+    
+    // Получаем токен
+    const token = await getValidToken(req);
+    
+    // Сначала получаем полную информацию о резюме
+    const resumeResponse = await fetch(`https://api.hh.ru/resumes/${resumeId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'User-Agent': 'HH-Airtable App/1.0'
+      }
+    });
+    
+    if (!resumeResponse.ok) {
+      throw new Error(`Failed to fetch resume: ${resumeResponse.status}`);
+    }
+    
+    let resumeData = await resumeResponse.json();
+    let paidContactOpened = false;
+    let hadFreeContacts = false;
+    
+    // Проверяем наличие контактов
+    const hasContacts = resumeData.contact && (
+      resumeData.contact.email || 
+      resumeData.contact.phone && resumeData.contact.phone.length > 0
+    );
+    
+    if (hasContacts) {
+      // Контакты уже есть (бесплатные)
+      hadFreeContacts = true;
+    } else if (openPaidContacts && resumeData.actions && resumeData.actions.get_with_contact) {
+      // Открываем платные контакты
+      const contactResponse = await fetch(resumeData.actions.get_with_contact.url, {
+        method: resumeData.actions.get_with_contact.method,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'User-Agent': 'HH-Airtable App/1.0'
+        }
+      });
+      
+      if (contactResponse.ok) {
+        resumeData = await contactResponse.json();
+        paidContactOpened = true;
+      }
+    }
+    
+    // Преобразуем данные для Airtable
+    const airtableData = transformResumeData(resumeData);
+    
+    // Сохраняем в Airtable
+    const airtableResponse = await fetch(
+      `https://api.airtable.com/v0/${process.env.AIRTABLE_BASE_ID}/People`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(airtableData)
+      }
+    );
+    
+    if (!airtableResponse.ok) {
+      const error = await airtableResponse.text();
+      throw new Error(`Airtable error: ${error}`);
+    }
+    
+    const result = await airtableResponse.json();
+    
+    res.json({ 
+      success: true, 
+      id: result.records[0].id,
+      paidContactOpened: paidContactOpened,
+      hadFreeContacts: hadFreeContacts
+    });
+    
+  } catch (error) {
+    console.error('Save to Airtable error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Выход
