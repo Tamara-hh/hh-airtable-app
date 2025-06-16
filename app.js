@@ -935,13 +935,37 @@ app.get('/search', isAuthenticated, async (req, res) => {
 // Результаты поиска
 app.get('/search-results', isAuthenticated, async (req, res) => {
   try {
-    const searchParams = new URLSearchParams({
-      text: req.query.text || '',
-      area: req.query.area || '1',
-      per_page: req.query.per_page || '20',
-      page: req.query.page || '0',
-      skills: req.query.skills_must_have || ''
-    });
+    // Формируем поисковый запрос с учетом настроек точности
+let searchText = req.query.text || '';
+
+// Если выбран поиск точной фразы
+if (req.query.exact_phrase === '1') {
+  searchText = `"${searchText}"`;
+}
+
+// Добавляем исключения
+if (req.query.exclude_words) {
+  const excludeWords = req.query.exclude_words.split(',').map(w => w.trim()).filter(w => w);
+  excludeWords.forEach(word => {
+    searchText += ` NOT "${word}"`;
+  });
+}
+
+const searchParams = new URLSearchParams({
+  text: searchText,
+  area: req.query.area || '1',
+  per_page: req.query.per_page || '20',
+  page: req.query.page || '0'
+});
+
+// Добавляем поле поиска если указано
+if (req.query.search_in_fields && req.query.search_in_fields !== 'all') {
+  if (req.query.search_in_fields === 'title') {
+    searchParams.append('search_field', 'name');
+  } else if (req.query.search_in_fields === 'experience') {
+    searchParams.append('search_field', 'description');
+  }
+}
     
     // Добавляем опциональные параметры
     if (req.query.experience) searchParams.append('experience', req.query.experience);
