@@ -545,7 +545,7 @@ app.get('/callback', async (req, res) => {
 });
 
 // Страница поиска
-app.get('/search', isAuthenticated, (req, res) => {
+app.get('/search', isAuthenticated, async (req, res) => {
   // Пытаемся загрузить сохраненные токены, если их нет в сессии
   if (!req.session.tokens) {
     const storedTokens = loadStoredTokens();
@@ -554,6 +554,20 @@ app.get('/search', isAuthenticated, (req, res) => {
       req.session.userInfo = storedTokens.userInfo;
     }
   }
+  
+  // Получаем список городов
+  const areas = await getAreasFromHH();
+  
+  // Популярные города для быстрого доступа
+  const popularAreas = [
+    { id: '1', name: 'Москва' },
+    { id: '2', name: 'Санкт-Петербург' },
+    { id: '3', name: 'Екатеринбург' },
+    { id: '4', name: 'Новосибирск' },
+    { id: '113', name: 'Россия' },
+    { id: '40', name: 'Казахстан' },
+    { id: '97', name: 'Узбекистан' }
+  ];
   
   res.send(`
     <!DOCTYPE html>
@@ -646,6 +660,62 @@ app.get('/search', isAuthenticated, (req, res) => {
         .back-link a:hover {
           text-decoration: underline;
         }
+        .area-search-container {
+          position: relative;
+        }
+        .area-search-input {
+          width: 100%;
+          padding: 12px;
+          border: 2px solid #e2e8f0;
+          border-radius: 10px;
+          font-size: 16px;
+        }
+        .area-dropdown {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          max-height: 300px;
+          overflow-y: auto;
+          background: white;
+          border: 2px solid #e2e8f0;
+          border-top: none;
+          border-radius: 0 0 10px 10px;
+          display: none;
+          z-index: 100;
+        }
+        .area-dropdown.show {
+          display: block;
+        }
+        .area-item {
+          padding: 10px 15px;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+        .area-item:hover {
+          background: #f7fafc;
+        }
+        .area-item.selected {
+          background: #667eea;
+          color: white;
+        }
+        .popular-areas {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin-top: 10px;
+        }
+        .popular-area-chip {
+          padding: 6px 12px;
+          background: #e2e8f0;
+          border-radius: 20px;
+          font-size: 14px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .popular-area-chip:hover {
+          background: #cbd5e0;
+        }
       </style>
     </head>
     <body>
@@ -668,26 +738,24 @@ app.get('/search', isAuthenticated, (req, res) => {
           <div class="form-row">
             <div class="form-group">
               <label for="area">Регион</label>
-              <select id="area" name="area">
-                <option value="1">Москва</option>
-                <option value="2">Санкт-Петербург</option>
-                <option value="3">Екатеринбург</option>
-                <option value="4">Новосибирск</option>
-                <option value="5">Нижний Новгород</option>
-                <option value="66">Казань</option>
-                <option value="88">Краснодар</option>
-                <option value="104">Ростов-на-Дону</option>
-                <option value="113">Вся Россия</option>
-                <option value="74">Челябинск</option>
-                <option value="40">Казахстан</option>
-                <option value="97">Узбекистан</option>
-                <option value="160">Алматы</option>
-                <option value="159">Астана</option>
-                <option value="164">Караганда</option>
-                <option value="167">Усть-Каменогорск</option>
-                <option value="2759">Ташкент</option>
-                <option value="2761">Самарканд</option>
-              </select>
+              <div class="area-search-container">
+                <input 
+                  type="text" 
+                  id="area-search" 
+                  class="area-search-input"
+                  placeholder="Начните вводить название города..."
+                  autocomplete="off"
+                >
+                <input type="hidden" id="area" name="area" value="113">
+                <div id="area-dropdown" class="area-dropdown"></div>
+              </div>
+              <div class="popular-areas">
+                ${popularAreas.map(area => `
+                  <div class="popular-area-chip" onclick="selectArea('${area.id}', '${area.name}')">
+                    ${area.name}
+                  </div>
+                `).join('')}
+              </div>
             </div>
             
             <div class="form-group">
@@ -765,6 +833,72 @@ app.get('/search', isAuthenticated, (req, res) => {
           <a href="/">← Вернуться на главную</a>
         </div>
       </div>
+      
+      <script>
+        const areas = ${JSON.stringify(areas)};
+        let selectedAreaId = '113'; // Россия по умолчанию
+        let selectedAreaName = 'Россия';
+        
+        const areaSearch = document.getElementById('area-search');
+        const areaDropdown = document.getElementById('area-dropdown');
+        const areaInput = document.getElementById('area');
+        
+        // Устанавливаем значение по умолчанию
+        areaSearch.value = selectedAreaName;
+        
+        function selectArea(id, name) {
+          selectedAreaId = id;
+          selectedAreaName = name;
+          areaSearch.value = name;
+          areaInput.value = id;
+          areaDropdown.classList.remove('show');
+        }
+        
+        function filterAreas(query) {
+          const filtered = areas.filter(area => 
+            area.name.toLowerCase().includes(query.toLowerCase())
+          ).slice(0, 20); // Показываем только первые 20 результатов
+          
+          areaDropdown.innerHTML = filtered.map(area => 
+            '<div class="area-item" onclick="selectArea(\\'' + area.id + '\\', \\'' + area.name.replace(/'/g, "\\\\'") + '\\')">' + area.name + '</div>'
+          ).join('');
+          
+          areaDropdown.classList.add('show');
+        }
+        
+        areaSearch.addEventListener('input', function() {
+          const query = this.value.trim();
+          if (query.length > 0) {
+            filterAreas(query);
+          } else {
+            areaDropdown.classList.remove('show');
+          }
+        });
+        
+        areaSearch.addEventListener('focus', function() {
+          if (this.value.trim().length > 0) {
+            filterAreas(this.value.trim());
+          }
+        });
+        
+        // Закрываем dropdown при клике вне его
+        document.addEventListener('click', function(e) {
+          if (!e.target.closest('.area-search-container')) {
+            areaDropdown.classList.remove('show');
+          }
+        });
+        
+        // Предотвращаем отправку формы при нажатии Enter в поле поиска города
+        areaSearch.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const firstItem = areaDropdown.querySelector('.area-item');
+            if (firstItem) {
+              firstItem.click();
+            }
+          }
+        });
+      </script>
     </body>
     </html>
   `);
