@@ -75,7 +75,57 @@ app.use((req, res, next) => {
   }
   next();
 });
-
+// Функция для получения списка городов из API HeadHunter
+async function getAreasFromHH() {
+  try {
+    const response = await fetch('https://api.hh.ru/areas', {
+      headers: {
+        'User-Agent': 'HH-Airtable-App/1.0'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch areas');
+    }
+    
+    const areas = await response.json();
+    
+    // Создаем плоский список городов для удобства
+    const flatAreas = [];
+    
+    // Функция для рекурсивного обхода дерева регионов
+    function processArea(area, parentName = '') {
+      // Добавляем текущий регион
+      flatAreas.push({
+        id: area.id,
+        name: parentName ? `${area.name}, ${parentName}` : area.name,
+        parentId: area.parent_id
+      });
+      
+      // Обрабатываем дочерние регионы
+      if (area.areas && area.areas.length > 0) {
+        area.areas.forEach(child => {
+          processArea(child, area.name);
+        });
+      }
+    }
+    
+    // Обрабатываем все страны
+    areas.forEach(country => {
+      processArea(country);
+    });
+    
+    return flatAreas;
+  } catch (error) {
+    console.error('Error fetching areas:', error);
+    // Возвращаем базовый список городов при ошибке
+    return [
+      { id: '1', name: 'Москва' },
+      { id: '2', name: 'Санкт-Петербург' },
+      { id: '113', name: 'Россия' }
+    ];
+  }
+}
 // Проверка авторизации
 function isAuthenticated(req, res, next) {
   // Пытаемся загрузить сохраненные токены, если их нет в сессии
