@@ -825,6 +825,34 @@ app.get('/search', isAuthenticated, async (req, res) => {
             >
             <p class="help-text">Достаточно хотя бы одного из указанных навыков</p>
           </div>
+                    <div class="form-group">
+            <label for="search_in_fields">Где искать</label>
+            <select id="search_in_fields" name="search_in_fields">
+              <option value="all">Везде (название резюме + опыт работы + навыки)</option>
+              <option value="title">Только в названии резюме</option>
+              <option value="experience">Только в опыте работы</option>
+            </select>
+            <p class="help-text">Поиск только в названии резюме даст более точные результаты</p>
+          </div>
+
+          <div class="form-group">
+            <label for="exclude_words">Исключить слова (через запятую)</label>
+            <input 
+              type="text" 
+              id="exclude_words" 
+              name="exclude_words" 
+              placeholder="Например: кадры, персонал, HR, продажи"
+            >
+            <p class="help-text">Резюме с этими словами будут исключены из результатов</p>
+          </div>
+
+          <div class="form-group">
+            <label for="exact_phrase">
+              <input type="checkbox" id="exact_phrase" name="exact_phrase" value="1" style="width: auto; margin-right: 10px;">
+              Искать точную фразу
+            </label>
+            <p class="help-text">Будет искать слова именно в том порядке, как вы написали</p>
+          </div>
           
           <button type="submit">🔍 Начать поиск</button>
         </form>
