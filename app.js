@@ -936,36 +936,40 @@ app.get('/search', isAuthenticated, async (req, res) => {
 app.get('/search-results', isAuthenticated, async (req, res) => {
   try {
     // Формируем поисковый запрос с учетом настроек точности
-let searchText = req.query.text || '';
+    let searchText = req.query.text || '';
 
-// Если выбран поиск точной фразы
-if (req.query.exact_phrase === '1') {
-  searchText = `"${searchText}"`;
-}
+    // Если выбран поиск точной фразы
+    if (req.query.exact_phrase === '1') {
+      searchText = `"${searchText}"`;
+    }
 
-// Добавляем исключения
-if (req.query.exclude_words) {
-  const excludeWords = req.query.exclude_words.split(',').map(w => w.trim()).filter(w => w);
-  excludeWords.forEach(word => {
-    searchText += ` NOT "${word}"`;
-  });
-}
+    // Добавляем исключения
+    if (req.query.exclude_words) {
+      const excludeWords = req.query.exclude_words.split(',').map(w => w.trim()).filter(w => w);
+      excludeWords.forEach(word => {
+        searchText += ` NOT "${word}"`;
+      });
+    }
 
-const searchParams = new URLSearchParams({
-  text: searchText,
-  area: req.query.area || '1',
-  per_page: req.query.per_page || '20',
-  page: req.query.page || '0'
-});
+    const searchParams = new URLSearchParams({
+      text: searchText,
+      area: req.query.area || '1',
+      per_page: req.query.per_page || '20',
+      page: req.query.page || '0'
+    });
 
-// Добавляем поле поиска если указано
-if (req.query.search_in_fields && req.query.search_in_fields !== 'all') {
-  if (req.query.search_in_fields === 'title') {
-    searchParams.append('search_field', 'name');
-  } else if (req.query.search_in_fields === 'experience') {
-    searchParams.append('search_field', 'description');
-  }
-}
+    // ИСПРАВЛЕНИЕ: правильные параметры для API HH
+    if (req.query.search_in_fields && req.query.search_in_fields !== 'all') {
+      if (req.query.search_in_fields === 'title') {
+        // Ищем только в названии позиции
+        searchParams.set('text', searchText);
+        searchParams.set('search_field', 'name');
+      } else if (req.query.search_in_fields === 'experience') {
+        // Ищем только в опыте работы
+        searchParams.set('text', searchText);
+        searchParams.set('search_field', 'description');
+      }
+    }
     
     // Добавляем опциональные параметры
     if (req.query.experience) searchParams.append('experience', req.query.experience);
@@ -973,16 +977,16 @@ if (req.query.search_in_fields && req.query.search_in_fields !== 'all') {
 
     // Добавляем фильтр по дате обновления
     if (req.query.update_period) {
-    const days = parseInt(req.query.update_period);
-    const dateFrom = new Date();
-    dateFrom.setDate(dateFrom.getDate() - days);
-    const formattedDate = dateFrom.toISOString().split('T')[0]; // Формат YYYY-MM-DD
-    searchParams.append('date_from', formattedDate);
-  }
+      const days = parseInt(req.query.update_period);
+      const dateFrom = new Date();
+      dateFrom.setDate(dateFrom.getDate() - days);
+      const formattedDate = dateFrom.toISOString().split('T')[0]; // Формат YYYY-MM-DD
+      searchParams.append('date_from', formattedDate);
+    }
    
     // Обработка навыков
     if (req.query.skills_must_have || req.query.skills_nice_to_have) {
-      let skillsText = req.query.text || '';
+      let skillsText = searchText;
       
       if (req.query.skills_must_have) {
         const mustHaveSkills = req.query.skills_must_have.split(',').map(s => s.trim()).filter(s => s);
@@ -1000,6 +1004,8 @@ if (req.query.search_in_fields && req.query.search_in_fields !== 'all') {
       
       searchParams.set('text', skillsText.trim());
     }
+
+    console.log('Search params:', searchParams.toString()); // Для отладки
     
     const response = await fetch(`https://api.hh.ru/resumes?${searchParams}`, {
       headers: {
@@ -1505,7 +1511,6 @@ window.onload = function() {
     `);
   }
 });
-
 // Просмотр резюме
 app.get('/resume/:id', isAuthenticated, async (req, res) => {
   try {
@@ -1844,6 +1849,7 @@ app.post('/view-contacts', isAuthenticated, async (req, res) => {
     `);
   }
 });
+
 // Сохранение в Airtable
 app.post('/save-to-airtable', isAuthenticated, async (req, res) => {
   try {
